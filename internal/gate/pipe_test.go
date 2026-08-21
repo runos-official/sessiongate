@@ -2,6 +2,7 @@ package gate
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -164,5 +165,134 @@ func TestPipeCarriesBytesBothWays(t *testing.T) {
 		if string(data) != "echo:"+msg {
 			t.Fatalf("got %q, want %q", data, "echo:"+msg)
 		}
+	}
+}
+
+/*
+A SHUTDOWN MUST END LIVE SESSIONS WITH A REASON.
+
+Draining keeps existing sessions while the grace period lasts, and then the process exits. Without
+CloseAll that exit drops every survivor by closing the TCP with no close frame, which is the one
+ending a client cannot interpret: identical to a dead cluster, a broken network and a refused pass.
+
+MEASURED on the cluster before this existed: a session held through a rollout restart simply stopped
+answering, and the client's read expired with "context deadline exceeded" and no status at all.
+*/
+func TestCloseAllEndsSessionsWithAStatedReason(t *testing.T) {
+	srv := &Server{}
+
+	gateSrv := wsServer(t, func(ctx context.Context, client *websocket.Conn) {
+		srv.track("jti-1", client)
+		defer srv.untrack("jti-1")
+		// Stand in for a live session: read until the other side is closed.
+		for {
+			if _, _, err := client.Read(ctx); err != nil {
+				return
+			}
+		}
+	})
+	defer gateSrv.Close()
+
+	client := dial(t, "ws"+gateSrv.URL[4:])
+	defer client.CloseNow()
+
+	// Let the handler register the session before ending it, and FAIL if it never does. The first
+	// version of this loop just ran out and carried on, which made the test take exactly its own
+	// timeout and told nobody why.
+	registered := false
+	waitStart := time.Now()
+	for time.Since(waitStart) < 5*time.Second {
+		srv.openMu.Lock()
+		n := len(srv.open)
+		srv.openMu.Unlock()
+		if n == 1 {
+			registered = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !registered {
+		t.Fatalf("the session was never registered, so CloseAll below would prove nothing")
+	}
+	t.Logf("session registered after %s", time.Since(waitStart).Round(time.Millisecond))
+
+	if closed := srv.CloseAll(CloseDraining, "the session gate is restarting; reconnect"); closed != 1 {
+		t.Fatalf("CloseAll reported %d sessions, want 1", closed)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, _, err := client.Read(ctx)
+	status := websocket.CloseStatus(err)
+	if status == -1 {
+		t.Fatalf("the session was dropped with no close frame: %v", err)
+	}
+	if int(status) != CloseDraining {
+		t.Fatalf("closed with %d, want %d so a client knows to reconnect", status, CloseDraining)
+	}
+}
+
+/** CloseAll on a gate with nothing open is a no-op, not a panic. */
+func TestCloseAllWithNoSessions(t *testing.T) {
+	srv := &Server{}
+	if n := srv.CloseAll(CloseDraining, "x"); n != 0 {
+		t.Fatalf("reported %d sessions on an idle gate", n)
+	}
+}
+
+/*
+CLOSING MANY SESSIONS MUST NOT TAKE MANY TIMES AS LONG AS CLOSING ONE.
+
+coder/websocket's Close waits up to five seconds for the peer's close frame. Serially, the gate's
+default ceiling of 128 sessions would take over ten minutes to shut down: the kubelet would kill the
+process partway through and most sessions would be dropped with no close frame, which is the exact
+outcome CloseAll exists to prevent.
+*/
+func TestCloseAllDoesNotTakeFiveSecondsPerSession(t *testing.T) {
+	srv := &Server{}
+	const sessions = 8
+
+	gateSrv := wsServer(t, func(ctx context.Context, client *websocket.Conn) {
+		id := fmt.Sprintf("jti-%p", client)
+		srv.track(id, client)
+		defer srv.untrack(id)
+		for {
+			if _, _, err := client.Read(ctx); err != nil {
+				return
+			}
+		}
+	})
+	defer gateSrv.Close()
+
+	clients := make([]*websocket.Conn, 0, sessions)
+	for i := 0; i < sessions; i++ {
+		c := dial(t, "ws"+gateSrv.URL[4:])
+		defer c.CloseNow()
+		clients = append(clients, c)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		srv.openMu.Lock()
+		n := len(srv.open)
+		srv.openMu.Unlock()
+		if n == sessions {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	start := time.Now()
+	closed := srv.CloseAll(CloseDraining, "restarting")
+	elapsed := time.Since(start)
+	t.Logf("closed %d sessions in %s", closed, elapsed.Round(time.Millisecond))
+
+	if closed != sessions {
+		t.Fatalf("closed %d of %d", closed, sessions)
+	}
+	// Serial would be at least 5s x 8 = 40s. Concurrent is bounded by one peer's timeout.
+	if elapsed > 8*time.Second {
+		t.Fatalf("closing %d sessions took %s, which scales with the session count rather than "+
+			"being bounded: a full gate would outlast its own grace period", sessions, elapsed)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,6 +34,11 @@ type Server struct {
 	MaxSessions int32
 	live        atomic.Int32
 	draining    atomic.Bool
+
+	// open is every live session, so a shutdown can END them rather than let the process exit from
+	// under them. See CloseAll.
+	openMu sync.Mutex
+	open   map[string]*websocket.Conn
 }
 
 // streamKinds are what the websocket door serves. ws.files is deliberately absent: it is an HTTP
@@ -51,6 +57,81 @@ func (s *Server) Handler() http.Handler {
 
 // Drain stops accepting new sessions. Existing ones keep running.
 func (s *Server) Drain() { s.draining.Store(true) }
+
+// Live is how many sessions are open, so a shutdown can wait for them.
+func (s *Server) Live() int32 { return s.live.Load() }
+
+/*
+CloseAll ends every live session with a stated reason.
+
+WHY IT EXISTS. Draining keeps existing sessions while the grace period lasts, and then the process
+exits. Without this, that exit drops every survivor by closing the TCP with no close frame, and a
+frameless drop is precisely what a client cannot interpret: it looks identical to a dead cluster, a
+broken network and a refused pass. A person mid-command deserves better than a client that shrugs.
+
+4001 is "the gate is going away". A client that sees it knows to mint a new pass and reconnect,
+which is a completely different action from what it does on 4401 or 4502.
+*/
+func (s *Server) CloseAll(code int, reason string) int {
+	s.openMu.Lock()
+	conns := make([]*websocket.Conn, 0, len(s.open))
+	for _, c := range s.open {
+		conns = append(conns, c)
+	}
+	s.openMu.Unlock()
+
+	/*
+	 * CONCURRENTLY, and that is not a micro-optimisation.
+	 *
+	 * coder/websocket's Close writes a close frame and then WAITS UP TO FIVE SECONDS for the peer's
+	 * close frame. Closing serially would therefore take up to five seconds PER SESSION: at the
+	 * gate's default ceiling of 128 that is over ten minutes, far past any pod's grace period, so
+	 * the kubelet would kill the process partway through and every session after the first few
+	 * would be dropped with no close frame after all. The whole point of this function is to avoid
+	 * exactly that.
+	 *
+	 * MEASURED: one session took the full five seconds to close in a test where the peer was not
+	 * reading, which is how this was noticed.
+	 */
+	var wg sync.WaitGroup
+	for _, c := range conns {
+		wg.Add(1)
+		go func(conn *websocket.Conn) {
+			defer wg.Done()
+			// Best effort by nature: a connection that has already gone cannot be told anything, and
+			// a failure here must not stop the others being told.
+			_ = conn.Close(websocket.StatusCode(code), reason)
+		}(c)
+	}
+
+	// Bounded. A peer that never answers the close handshake must not hold the shutdown open, and
+	// its connection dies with the process a moment later regardless.
+	finished := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(finished)
+	}()
+	select {
+	case <-finished:
+	case <-time.After(6 * time.Second):
+	}
+	return len(conns)
+}
+
+func (s *Server) track(jti string, conn *websocket.Conn) {
+	s.openMu.Lock()
+	defer s.openMu.Unlock()
+	if s.open == nil {
+		s.open = map[string]*websocket.Conn{}
+	}
+	s.open[jti] = conn
+}
+
+func (s *Server) untrack(jti string) {
+	s.openMu.Lock()
+	defer s.openMu.Unlock()
+	delete(s.open, jti)
+}
 
 func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	start := s.now()
@@ -142,6 +223,12 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer upstream.Close(websocket.StatusNormalClosure, "")
+
+	// Tracked so a shutdown can END this session with a reason rather than letting the process exit
+	// from under it. Untracked before the pipe's own close, so a session that ends normally is never
+	// closed twice.
+	s.track(p.JTI, conn)
+	defer s.untrack(p.JTI)
 
 	logger.Info("session open", "waited", s.now().Sub(start).String())
 	pipeErr := Pipe(r.Context(), conn, upstream)

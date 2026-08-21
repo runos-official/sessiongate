@@ -127,13 +127,38 @@ func run(log *slog.Logger) error {
 	case <-ctx.Done():
 	}
 
-	// SIGTERM stops NEW sessions and keeps existing ones. A gate that dropped every live session on
-	// a rolling update would make every deploy an outage for whoever was mid-command.
-	log.Info("draining: no new sessions, existing ones keep running")
+	/*
+	 * SIGTERM stops NEW sessions and keeps existing ones. A gate that dropped every live session on
+	 * a rolling update would make every deploy an outage for whoever was mid-command.
+	 *
+	 * AND THEN IT ENDS THEM PROPERLY. The drain has a limit, and when it runs out the process exits.
+	 * Without the CloseAll below, that exit drops every survivor by closing the TCP with no close
+	 * frame, which is the one ending a client cannot interpret: it looks identical to a dead
+	 * cluster, a broken network and a refused pass. 4001 tells a client to mint a new pass and
+	 * reconnect, which is a different action from anything else it might do.
+	 */
+	log.Info("draining: no new sessions, existing ones keep running", "live", server.Live())
 	server.Drain()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+
+	// The admin listener goes first: a draining gate must stop reporting itself ready, so nothing
+	// new is routed to it while it finishes.
+	adminCtx, adminCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_ = admin.Shutdown(adminCtx)
+	adminCancel()
+
+	drainDeadline := time.Now().Add(cfg.drainTimeout)
+	for time.Now().Before(drainDeadline) {
+		if server.Live() == 0 {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if closed := server.CloseAll(gate.CloseDraining, "the session gate is restarting; reconnect"); closed > 0 {
+		log.Info("ended sessions that outlasted the drain", "sessions", closed)
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = admin.Shutdown(shutdownCtx)
 	return public.Shutdown(shutdownCtx)
 }
 
@@ -203,6 +228,10 @@ type config struct {
 	namespace      string
 	leaseRetention time.Duration
 	maxSessions    int32
+	// drainTimeout is how long live sessions may keep running after SIGTERM. It must be SHORTER than
+	// the pod's terminationGracePeriodSeconds, or the kubelet kills the process before it can tell
+	// anyone anything, which puts us back to a frameless drop.
+	drainTimeout time.Duration
 }
 
 /*
@@ -258,6 +287,9 @@ func loadConfig() (config, error) {
 	c.skew = durationOr("RUNOS_CLOCK_SKEW_SECONDS", 30*time.Second)
 	c.leaseRetention = durationOr("RUNOS_LEASE_RETENTION_SECONDS", time.Hour)
 	c.maxSessions = int32(intOr("RUNOS_MAX_SESSIONS", 128))
+	// Shorter than the manifest's 300s grace on purpose, so the gate closes its own sessions rather
+	// than being killed mid-explanation.
+	c.drainTimeout = durationOr("RUNOS_DRAIN_SECONDS", 240*time.Second)
 	return c, nil
 }
 
