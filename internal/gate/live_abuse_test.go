@@ -5,6 +5,8 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -332,4 +334,83 @@ func TestLiveClientLearnsWhyWhenTheGateGoesAway(t *testing.T) {
 		t.Errorf("closed with %d; a draining gate should say %d so a client knows to reconnect",
 			status, CloseDraining)
 	}
+}
+
+/*
+THE FILE ENDPOINTS, live.
+
+They were minted and advertised before they existed: conductor returned 201 for a ws.files session
+and the gate served nothing at that path, so a client got a credential and then a 404. This proves
+the whole chain now answers, and that the two workspace kinds are DIFFERENT GRANTS rather than two
+names for one.
+*/
+func TestLiveFileEndpoints(t *testing.T) {
+	base, key, _, _ := liveHarness(t)
+	svc, uid, ok := strings.Cut(os.Getenv("RUNOS_GATE_LIVE_WS"), "/")
+	if !ok {
+		t.Skip("set RUNOS_GATE_LIVE_WS to svc/uid")
+	}
+	httpBase := "https" + strings.TrimPrefix(base, "wss")
+
+	filesPass := func(kind pass.Kind) string {
+		return livePass(t, key, liveKID(t), func(p *pass.Payload) {
+			p.Kind = kind
+			p.Sub = uid
+			p.WS = &pass.WSTarget{Service: svc, UID: uid, User: "devops"}
+			if kind == pass.KindWSFiles {
+				now, _ := p.IAT.MarshalJSON()
+				_ = now
+				p.EXP = json.RawMessage(fmt.Sprintf("%d", p.IssuedAt().Unix()+300))
+			}
+		})
+	}
+
+	get := func(path, token string) (int, string) {
+		req, err := http.NewRequest(http.MethodGet, httpBase+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		defer res.Body.Close()
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
+		return res.StatusCode, string(body)
+	}
+
+	t.Run("a file pass lists the workspace's files", func(t *testing.T) {
+		status, body := get("/v1/files?path=/home/devops", filesPass(pass.KindWSFiles))
+		if status != http.StatusOK {
+			t.Fatalf("listing returned %d: %s", status, truncate(body, 200))
+		}
+		t.Logf("listing returned %d bytes: %s", len(body), truncate(body, 120))
+	})
+
+	t.Run("no pass at all is refused", func(t *testing.T) {
+		if status, _ := get("/v1/files?path=/home/devops", ""); status != http.StatusUnauthorized {
+			t.Errorf("an unauthenticated listing returned %d", status)
+		}
+	})
+
+	/*
+	 * A TERMINAL PASS MUST NOT READ FILES. Both are workspace kinds naming the same workspace, but
+	 * they are different grants: the terminal one lives sixty seconds and is single use, the file
+	 * one lives five minutes and is not.
+	 */
+	t.Run("a terminal pass cannot read files", func(t *testing.T) {
+		status, _ := get("/v1/files?path=/home/devops", filesPass(pass.KindWSTerminal))
+		if status != http.StatusUnauthorized {
+			t.Errorf("a ws.terminal pass read files and got %d", status)
+		}
+	})
+
+	t.Run("an unknown file path is a 404, not a proxy attempt", func(t *testing.T) {
+		if status, _ := get("/v1/files/../../secrets", filesPass(pass.KindWSFiles)); status == http.StatusOK {
+			t.Errorf("a traversal path returned 200")
+		}
+	})
 }

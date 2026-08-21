@@ -149,3 +149,90 @@ func (n *notFoundOnDelete) RoundTrip(req *http.Request) (*http.Response, error) 
 	body, _ := json.Marshal(map[string]any{"items": n.items})
 	return jsonResponse(http.StatusOK, string(body)), nil
 }
+
+/*
+A BACKLOG THE REAPER CANNOT READ IN ONE REQUEST MUST STILL BE COLLECTED.
+
+The first version listed every lease in ONE request and read the body through an 8 MiB LimitReader,
+which returns a NIL ERROR on truncation. MEASURED against a fake apiserver serving realistically
+shaped Lease objects: 5,000 collected fine; 12,000 produced a 9.26 MB body, truncated silently, and
+failed with "unexpected end of JSON input" BEFORE a single delete. The reaper stopped collecting at
+exactly the point it was most needed, and every later run failed identically, so the backlog could
+only grow. That is the denial of service this component exists to prevent, caused by the component.
+*/
+type pagingTransport struct {
+	total    int
+	perPage  int
+	deleted  []string
+	requests int
+	pageSeen map[string]bool
+	now      time.Time
+}
+
+func (p *pagingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Method == http.MethodDelete {
+		parts := strings.Split(req.URL.Path, "/")
+		p.deleted = append(p.deleted, parts[len(parts)-1])
+		return jsonResponse(http.StatusOK, "{}"), nil
+	}
+	p.requests++
+
+	limit := p.perPage
+	if v := req.URL.Query().Get("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	start := 0
+	if c := req.URL.Query().Get("continue"); c != "" {
+		fmt.Sscanf(c, "%d", &start)
+	}
+
+	items := []map[string]any{}
+	for i := start; i < p.total && len(items) < limit; i++ {
+		items = append(items, lease(fmt.Sprintf("pass-%06d", i), p.now.Add(-2*time.Hour)))
+	}
+	next := start + len(items)
+	meta := map[string]any{}
+	if next < p.total {
+		meta["continue"] = fmt.Sprintf("%d", next)
+	}
+	body, _ := json.Marshal(map[string]any{"metadata": meta, "items": items})
+	return jsonResponse(http.StatusOK, string(body)), nil
+}
+
+func TestReaperCollectsABacklogTooBigForOneRequest(t *testing.T) {
+	now := time.Now()
+	rt := &pagingTransport{total: 12000, perPage: 500, now: now}
+	r, err := NewReaper("https://h", "runos", tok, &http.Client{Transport: rt}, time.Hour, 5*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Now = func() time.Time { return now }
+
+	deleted, err := r.ReapOnce(context.Background())
+	if err != nil {
+		t.Fatalf("a backlog of 12000 must still be collected: %v", err)
+	}
+	if deleted != 12000 {
+		t.Fatalf("collected %d of 12000", deleted)
+	}
+	if rt.requests < 2 {
+		t.Fatalf("the whole backlog came back in %d request(s), so pagination was never exercised",
+			rt.requests)
+	}
+	t.Logf("collected %d leases across %d list requests", deleted, rt.requests)
+}
+
+/** A single page still works, and does not ask for a second one. */
+func TestReaperStopsWhenThereIsNoContinueToken(t *testing.T) {
+	now := time.Now()
+	rt := &pagingTransport{total: 3, perPage: 500, now: now}
+	r, _ := NewReaper("https://h", "runos", tok, &http.Client{Transport: rt}, time.Hour, time.Minute)
+	r.Now = func() time.Time { return now }
+	deleted, err := r.ReapOnce(context.Background())
+	if err != nil || deleted != 3 {
+		t.Fatalf("deleted %d err=%v", deleted, err)
+	}
+	if rt.requests != 1 {
+		t.Fatalf("made %d list requests for a single page", rt.requests)
+	}
+}

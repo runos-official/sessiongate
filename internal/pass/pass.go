@@ -51,6 +51,13 @@ const Prefix = "runos_pass_v1"
 // a megabyte per request is a cheap amplifier for the caller and an expensive one for the gate.
 const MaxTokenBytes = 4096
 
+// The bounds on the free text a workspace session carries. The SAME numbers are enforced by
+// conductor at mint time, so a caller is told at request time rather than at connect time.
+const (
+	MaxWorkspaceDirBytes = 512
+	MaxWorkspaceCmdBytes = 512
+)
+
 // decodeSegment decodes unpadded base64url STRICTLY.
 //
 // base64.RawURLEncoding on its own accepts a final character whose unused low bits are not zero:
@@ -463,9 +470,24 @@ func (p *Payload) validate(now time.Time, skew time.Duration) error {
 		// either a bug or an attempt to make the lifetime cap arithmetic underflow.
 		return refuse(ErrLifetime, "exp must be after iat")
 	}
-	if life := time.Duration(exp-iat) * time.Second; life > p.Kind.MaxLifetime() {
-		return refuse(ErrLifetime, "a %s pass may live %s, this one claims %s",
-			p.Kind, p.Kind.MaxLifetime(), life)
+	/*
+	 * COMPARED IN SECONDS, NOT AS A DURATION, and the difference is a real hole rather than taste.
+	 *
+	 * `time.Duration(exp-iat) * time.Second` computes NANOSECONDS in an int64, which wraps above a
+	 * span of 9223372036 seconds. MEASURED: span 9223372036 was refused, span 9223372037 was
+	 * ACCEPTED, and so was a span putting the expiry in the year 2570, because the multiply produced
+	 * a negative or tiny value that sailed past the cap. The check whose whole purpose is that a
+	 * buggy or compromised control plane cannot mint a long-lived credential did not exist for
+	 * exactly that case. Conductor's TypeScript mirror refuses all of them, so it was a divergence
+	 * too.
+	 *
+	 * Seconds are compared as plain integers, which cannot overflow for any value the decoder
+	 * accepts, and the vectors now cross the boundary in both directions.
+	 */
+	capSeconds := int64(p.Kind.MaxLifetime() / time.Second)
+	if life := exp - iat; life > capSeconds {
+		return refuse(ErrLifetime, "a %s pass may live %d seconds, this one claims %d",
+			p.Kind, capSeconds, life)
 	}
 
 	// Skew is applied at BOTH ends and is small. The cluster and the control plane are different
@@ -524,10 +546,19 @@ func (p *Payload) validateTarget() error {
 	if !printableASCII(p.WS.UID) || !printableASCII(p.WS.User) {
 		return refuse(ErrTarget, "a ws target's uid and user must be printable ASCII")
 	}
-	// dir and cmd are free text handed to the workspace, NOT to a shell by the gate, and they may be
-	// empty. They are still bounded, because an unbounded string in a signed credential is a way to
-	// make every log line and every Lease annotation enormous.
-	if len(p.WS.Dir) > 1024 || len(p.WS.Cmd) > 4096 {
+	/*
+	 * ONE LIMIT, and it is the same number at every hop.
+	 *
+	 * These were 1024 and 4096 here, 1024 and 4096 in conductor's route, and 512 and 512 in the
+	 * gate's own workspace resolver. So conductor happily returned 201 for a pass the gate could
+	 * never serve, and the client got a generic refusal at connect time for a request that was
+	 * accepted at mint time. Worse, a 4096-character cmd produced a token LARGER than MaxTokenBytes,
+	 * which every verifier then refused as malformed: conductor could mint a credential that
+	 * violated its own size cap.
+	 *
+	 * 512 is the tightest of the three and leaves the whole token comfortably inside MaxTokenBytes.
+	 */
+	if len(p.WS.Dir) > MaxWorkspaceDirBytes || len(p.WS.Cmd) > MaxWorkspaceCmdBytes {
 		return refuse(ErrTarget, "the ws target's dir or cmd is too long")
 	}
 	if !printableASCIIOrEmpty(p.WS.Dir) {

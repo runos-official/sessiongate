@@ -219,6 +219,15 @@ func TestUpdateVectors(t *testing.T) {
 	add("exp-equals-iat", "a pass that expires when it was issued",
 		sign(withKey(basePayload(KindVMSSH), "exp", 1755800000)), ErrLifetime)
 	add("exp-before-iat", "an inverted window", sign(withKey(basePayload(KindVMSSH), "exp", 1755799000)), ErrLifetime)
+	// THE OVERFLOW BOUNDARY. time.Duration(exp-iat)*time.Second wraps above 9223372036 seconds, so
+	// the cap silently stopped applying just past here. The suite used to jump from 86400 to an
+	// unparseable 1e20 and never crossed the multiply.
+	add("lifetime-at-the-overflow-boundary", "the largest span that does not wrap an int64 of nanoseconds",
+		sign(withKey(basePayload(KindVMSSH), "exp", 1755800000+9223372036)), ErrLifetime)
+	add("lifetime-one-past-the-overflow-boundary", "one second more used to be ACCEPTED, with an expiry in 2317",
+		sign(withKey(basePayload(KindVMSSH), "exp", 1755800000+9223372037)), ErrLifetime)
+	add("lifetime-far-past-the-overflow-boundary", "an expiry in the year 2570",
+		sign(withKey(basePayload(KindVMSSH), "exp", 1755800000+(1<<34))), ErrLifetime)
 	add("lifetime-over-cap", "a session pass may live 60 seconds however long it claims",
 		sign(withKey(basePayload(KindVMSSH), "exp", 1755886400)), ErrLifetime)
 	add("ws-files-lifetime-over-cap", "and ws.files 300, not more",
@@ -254,6 +263,16 @@ func TestUpdateVectors(t *testing.T) {
 	add("name-uppercase", "Kubernetes object names are lowercase",
 		sign(withVM(basePayload(KindVMSSH), "vmgroup-a1b2c", "VM-ABCDE")), ErrTarget)
 	add("name-empty", "an empty machine name", sign(withVM(basePayload(KindVMSSH), "vmgroup-a1b2c", "")), ErrTarget)
+	add("ws-dir-too-long", "one byte over the shared limit; conductor used to accept 1024 and mint a pass the gate refused",
+		sign(withKey(basePayload(KindWSTerminal), "ws", map[string]any{
+			"svc": "runostty-u1", "uid": "u1", "user": "dev",
+			"dir": "/" + strings.Repeat("a", 512), "cmd": "",
+		})), ErrTarget)
+	add("ws-cmd-too-long", "the same for cmd, which used to be allowed up to 4096 and could not fit the token",
+		sign(withKey(basePayload(KindWSTerminal), "ws", map[string]any{
+			"svc": "runostty-u1", "uid": "u1", "user": "dev",
+			"dir": "", "cmd": strings.Repeat("a", 513),
+		})), ErrTarget)
 	add("ws-svc-injection", "the same path injection through a workspace service name",
 		sign(withWS(basePayload(KindWSTerminal), "runostty-u1/../../x")), ErrTarget)
 

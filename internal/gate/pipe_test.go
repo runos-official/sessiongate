@@ -2,7 +2,11 @@ package gate
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/runos-official/sessiongate/internal/pass"
+	"github.com/runos-official/sessiongate/internal/replay"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -294,5 +298,121 @@ func TestCloseAllDoesNotTakeFiveSecondsPerSession(t *testing.T) {
 	if elapsed > 8*time.Second {
 		t.Fatalf("closing %d sessions took %s, which scales with the session count rather than "+
 			"being bounded: a full gate would outlast its own grace period", sessions, elapsed)
+	}
+}
+
+/*
+ONE PERSON MUST NOT BE ABLE TO FILL THE GATE.
+
+Without a per-subject ceiling, an authorized user who opens the gate's whole capacity and never
+types denies every other person on the cluster for as long as those TCP connections survive. A
+half-open connection behind a NAT that drops state without a FIN reaches the same place with no
+intent at all.
+*/
+func TestPerSubjectCeiling(t *testing.T) {
+	srv := &Server{MaxSessions: 100, MaxPerSubject: 3}
+
+	for i := 0; i < 3; i++ {
+		if n := srv.addForSubject("alice", 1); n > srv.MaxPerSubject {
+			t.Fatalf("session %d was over the ceiling at %d", i+1, n)
+		}
+	}
+	if n := srv.addForSubject("alice", 1); n <= srv.MaxPerSubject {
+		t.Fatalf("a fourth session was allowed at %d", n)
+	}
+	srv.addForSubject("alice", -1)
+
+	// Another person is unaffected: the ceiling is per subject, not global.
+	if n := srv.addForSubject("bob", 1); n != 1 {
+		t.Fatalf("bob's first session counted as %d, so the ceiling is shared", n)
+	}
+}
+
+/** A subject that closes everything is forgotten, rather than left as a zero entry for ever. */
+func TestPerSubjectCountsAreForgottenWhenTheyReachZero(t *testing.T) {
+	srv := &Server{MaxPerSubject: 3}
+	srv.addForSubject("alice", 1)
+	srv.addForSubject("alice", -1)
+
+	srv.openMu.Lock()
+	_, present := srv.perSubject["alice"]
+	srv.openMu.Unlock()
+	if present {
+		t.Fatal("a subject with no sessions is still in the map, which is a slow leak on a cluster with staff turnover")
+	}
+}
+
+/*
+A TRANSIENT APISERVER FAULT MUST NOT BURN THE PASS FOR EVER.
+
+Before this, one 503 burnt the pass in this process's memory while creating NO Lease. The next
+attempt with the same pass was told "already used", which is a lie: nothing durable was written, and
+the same pass presented to a second replica would have opened a session. The person retrying is told
+the one thing that makes them stop retrying.
+
+Only an UNCONFIRMED claim gives the entry back. A confirmed replay must stay burnt.
+*/
+type scriptedClaimer struct {
+	results []error
+	calls   int
+}
+
+func (s *scriptedClaimer) Claim(_ context.Context, _ string, _ time.Time) error {
+	i := s.calls
+	s.calls++
+	if i < len(s.results) {
+		return s.results[i]
+	}
+	return nil
+}
+
+func TestAnUnconfirmedClaimIsNotRememberedAsSpent(t *testing.T) {
+	claimer := &scriptedClaimer{results: []error{replay.ErrUnavailable, nil}}
+	srv := &Server{Memory: replay.NewMemory(), Claimer: claimer}
+	p := &pass.Payload{JTI: "0123456789abcdef0123456789abcdef", EXP: json.RawMessage("99999999999")}
+
+	if err := srv.claim(context.Background(), p); !errors.Is(err, replay.ErrUnavailable) {
+		t.Fatalf("first attempt: expected unavailable, got %v", err)
+	}
+	// THE RETRY MUST REACH THE APISERVER AGAIN, not be answered from memory.
+	if err := srv.claim(context.Background(), p); err != nil {
+		t.Fatalf("the retry after a transient fault must be allowed to try again, got %v", err)
+	}
+	if claimer.calls != 2 {
+		t.Fatalf("the durable claim was attempted %d time(s); the retry never reached it", claimer.calls)
+	}
+}
+
+func TestAConfirmedReplayStaysBurnt(t *testing.T) {
+	claimer := &scriptedClaimer{results: []error{nil}}
+	srv := &Server{Memory: replay.NewMemory(), Claimer: claimer}
+	p := &pass.Payload{JTI: "0123456789abcdef0123456789abcdef", EXP: json.RawMessage("99999999999")}
+
+	if err := srv.claim(context.Background(), p); err != nil {
+		t.Fatalf("first use: %v", err)
+	}
+	if err := srv.claim(context.Background(), p); !errors.Is(err, replay.ErrReplayed) {
+		t.Fatalf("the second use must be refused as replayed, got %v", err)
+	}
+	// Answered from memory without troubling the apiserver, which is what the layer is for.
+	if claimer.calls != 1 {
+		t.Fatalf("the durable claim was called %d times; the memory layer is not doing its job", claimer.calls)
+	}
+}
+
+/** And a durable AlreadyExists must also stay burnt, not be forgotten as if it were a fault. */
+func TestADurableReplayIsNotForgotten(t *testing.T) {
+	claimer := &scriptedClaimer{results: []error{replay.ErrReplayed, nil}}
+	srv := &Server{Memory: replay.NewMemory(), Claimer: claimer}
+	p := &pass.Payload{JTI: "0123456789abcdef0123456789abcdef", EXP: json.RawMessage("99999999999")}
+
+	if err := srv.claim(context.Background(), p); !errors.Is(err, replay.ErrReplayed) {
+		t.Fatalf("expected replayed, got %v", err)
+	}
+	if err := srv.claim(context.Background(), p); !errors.Is(err, replay.ErrReplayed) {
+		t.Fatalf("a pass the apiserver called spent must stay spent here, got %v", err)
+	}
+	if claimer.calls != 1 {
+		t.Fatalf("the durable claim was called %d times after a confirmed replay", claimer.calls)
 	}
 }

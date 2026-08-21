@@ -369,6 +369,24 @@
       "expect": "pass_lifetime"
     },
     {
+      "name": "lifetime-at-the-overflow-boundary",
+      "why": "the largest span that does not wrap an int64 of nanoseconds",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTA5NzkxNzIwMzYsImlhdCI6MTc1NTgwMDAwMCwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4Iiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJzdWIiOiJHSzJ4UTdtVWVaYk40aFZ0MHBMclljU2QzZkExIiwidiI6MSwidm0iOnsibmFtZSI6InZtLWFiY2RlIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.mkX9ZIp1aG_4e8NKGZjTqbM4-ATMQcGOGGGuj6Nx7ev2xB_d4wKQ9S6iv-AoBrQriAwRpOHqB-o16q1SXrK9BQ",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "lifetime-one-past-the-overflow-boundary",
+      "why": "one second more used to be ACCEPTED, with an expiry in 2317",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTA5NzkxNzIwMzcsImlhdCI6MTc1NTgwMDAwMCwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4Iiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJzdWIiOiJHSzJ4UTdtVWVaYk40aFZ0MHBMclljU2QzZkExIiwidiI6MSwidm0iOnsibmFtZSI6InZtLWFiY2RlIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.gM_O4JKJfZHegUt6QpqxpEyz_51Xxtuo-XdZU_es3sCQozBBUOSwRwctnLIi5H2quilRlzRwRKGKkNQYBywjDg",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "lifetime-far-past-the-overflow-boundary",
+      "why": "an expiry in the year 2570",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTg5MzU2NjkxODQsImlhdCI6MTc1NTgwMDAwMCwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4Iiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJzdWIiOiJHSzJ4UTdtVWVaYk40aFZ0MHBMclljU2QzZkExIiwidiI6MSwidm0iOnsibmFtZSI6InZtLWFiY2RlIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.EKH-mc5iq71FtTtrwX69qaxMo5EEmf13kr5WPVqKlQChO8x14fVkWsi_vWYHArxUGuFvrMJUNWCH9LbabvV4Cg",
+      "expect": "pass_lifetime"
+    },
+    {
       "name": "lifetime-over-cap",
       "why": "a session pass may live 60 seconds however long it claims",
       "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTg4NjQwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.uGnpB83Hnb31DbW2ugnpC2cvjvnHu9s2GqdrqPcsGC-mMc49AYmkxHEttBy-V0j_tfivOthN5nKkztrjd9OOCg",
@@ -516,6 +534,18 @@
       "name": "name-empty",
       "why": "an empty machine name",
       "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoiIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.3pGVC8yqFzNJKpHljctWllROJB9wWb0s7KnhiI0TNv88qpylylT-ono4UG3I8RNxJAHzdzyhnojSbU4n7Im6Cg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ws-dir-too-long",
+      "why": "one byte over the shared limit; conductor used to accept 1024 and mint a pass the gate refused",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MudGVybWluYWwiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6IiIsImRpciI6Ii9hYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsInN2YyI6InJ1bm9zdHR5LXUxIiwidWlkIjoidTEiLCJ1c2VyIjoiZGV2In19.YKUXbyMLO4v7BxL_K_RhgJ-KEXDAE8drMQm_ZDAjhMNmJ_6iXQgc6DM6nhInVm6DLWQ0qhozRmAcUp3KEZ8JCw",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ws-cmd-too-long",
+      "why": "the same for cmd, which used to be allowed up to 4096 and could not fit the token",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MudGVybWluYWwiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6ImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSIsImRpciI6IiIsInN2YyI6InJ1bm9zdHR5LXUxIiwidWlkIjoidTEiLCJ1c2VyIjoiZGV2In19.Z8gt1daaoQmEZvGABQGC1CPnb8oqJT08P2E-MDsPJILUywmGCSS87urVF90vI-feVGP39occ75G713YmbY3RCQ",
       "expect": "pass_target"
     },
     {

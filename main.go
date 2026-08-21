@@ -23,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/runos-official/sessiongate/internal/files"
 	"github.com/runos-official/sessiongate/internal/gate"
 	"github.com/runos-official/sessiongate/internal/pass"
 	"github.com/runos-official/sessiongate/internal/replay"
@@ -54,7 +55,9 @@ func run(log *slog.Logger) error {
 	}
 	log.Info("session gate starting",
 		"version", version.Version, "aid", cfg.aid, "cid", cfg.cid,
-		"keys", len(cfg.keys), "origins", cfg.origins, "namespace", cfg.namespace)
+		"keys", len(cfg.keys), "origins", cfg.origins, "namespace", cfg.namespace,
+		"maxSessions", cfg.maxSessions, "maxPerSubject", cfg.maxPerSubject,
+		"maxSessionAge", cfg.maxSessionAge.String())
 
 	upstream, err := gate.InClusterUpstream()
 	if err != nil {
@@ -90,11 +93,16 @@ func run(log *slog.Logger) error {
 			AID: cfg.aid, CID: cfg.cid, Keys: cfg.keys,
 			AllowedOrigins: cfg.origins, Skew: cfg.skew,
 		},
-		Upstream:    upstream,
-		Memory:      memory,
-		Claimer:     claimer,
-		Log:         log,
-		MaxSessions: cfg.maxSessions,
+		Upstream: upstream,
+		Memory:   memory,
+		Claimer:  claimer,
+		Log:      log,
+		// Its own HTTP client, separate from the proxy and the claim clients. A project download can
+		// run for minutes, and sharing a client would let one kind of request make the others wait.
+		Files:         &files.Proxy{HTTP: &http.Client{}, Log: log},
+		MaxSessions:   cfg.maxSessions,
+		MaxPerSubject: cfg.maxPerSubject,
+		MaxSessionAge: cfg.maxSessionAge,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
@@ -111,8 +119,12 @@ func run(log *slog.Logger) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	admin := &http.Server{
-		Addr:              ":8081",
-		Handler:           gate.AdminHandler(func() bool { return true }, func() int32 { return 0 }),
+		Addr: ":8081",
+		// THE METRIC MUST READ THE SERVER, not a literal. It was `func() int32 { return 0 }`, so the
+		// one number the gate publishes always said zero: the capacity ceiling that can deny a whole
+		// cluster was invisible, and so was the per-subject one. A metric that cannot move is worse
+		// than none, because a dashboard built on it looks healthy by construction.
+		Handler:           gate.AdminHandler(func() bool { return true }, server.Live),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -228,6 +240,11 @@ type config struct {
 	namespace      string
 	leaseRetention time.Duration
 	maxSessions    int32
+	// maxPerSubject stops one person filling the gate and denying everyone else on the cluster.
+	maxPerSubject int32
+	// maxSessionAge bounds a single session. The pass lives 60 seconds; without this the session it
+	// opens had no upper bound at all. Zero disables it.
+	maxSessionAge time.Duration
 	// drainTimeout is how long live sessions may keep running after SIGTERM. It must be SHORTER than
 	// the pod's terminationGracePeriodSeconds, or the kubelet kills the process before it can tell
 	// anyone anything, which puts us back to a frameless drop.
@@ -287,6 +304,11 @@ func loadConfig() (config, error) {
 	c.skew = durationOr("RUNOS_CLOCK_SKEW_SECONDS", 30*time.Second)
 	c.leaseRetention = durationOr("RUNOS_LEASE_RETENTION_SECONDS", time.Hour)
 	c.maxSessions = int32(intOr("RUNOS_MAX_SESSIONS", 128))
+	// An eighth of the gate's total, so a full gate needs eight people rather than one.
+	c.maxPerSubject = int32(intOr("RUNOS_MAX_SESSIONS_PER_SUBJECT", 16))
+	// Twelve hours. Long enough that nobody loses a working day's terminal, short enough that a
+	// forgotten tab does not hold a slot for a week. Set to 0 to disable.
+	c.maxSessionAge = durationOr("RUNOS_MAX_SESSION_SECONDS", 12*time.Hour)
 	// Shorter than the manifest's 300s grace on purpose, so the gate closes its own sessions rather
 	// than being killed mid-explanation.
 	c.drainTimeout = durationOr("RUNOS_DRAIN_SECONDS", 240*time.Second)

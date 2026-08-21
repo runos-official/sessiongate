@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/runos-official/sessiongate/internal/files"
 	"github.com/runos-official/sessiongate/internal/pass"
 	"github.com/runos-official/sessiongate/internal/replay"
 )
@@ -26,19 +27,40 @@ type Server struct {
 	Upstream *Upstream
 	Memory   *replay.Memory
 	Claimer  replay.Claimer
-	Log      *slog.Logger
-	Now      func() time.Time
+	// Files serves the read-only file endpoints.
+	Files *files.Proxy
+	Log   *slog.Logger
+	Now   func() time.Time
 
 	// MaxSessions bounds concurrency. A gate with no ceiling is a gate that dies of its own success
 	// and takes every live session with it.
 	MaxSessions int32
-	live        atomic.Int32
-	draining    atomic.Bool
+	/*
+	 * MaxPerSubject stops ONE person filling the gate.
+	 *
+	 * Without it, an authorized user opening MaxSessions terminals and never typing denies every
+	 * other person on the cluster for as long as those TCP connections survive, and a half-open
+	 * connection behind a NAT that drops state without a FIN reaches the same place with no intent
+	 * at all. A per-subject ceiling turns a cluster-wide denial into one person's own problem.
+	 */
+	MaxPerSubject int32
+	/*
+	 * MaxSessionAge is an absolute limit on one session.
+	 *
+	 * The PASS lives sixty seconds; the SESSION it opens had no upper bound whatsoever. Nothing in
+	 * the gate pinged, timed out or aged a connection, so a session could outlive the credential
+	 * that authorized it by any margin, including for ever. Zero disables it, which is a deliberate
+	 * escape hatch for an operator who would rather have long consoles than the bound.
+	 */
+	MaxSessionAge time.Duration
+	live          atomic.Int32
+	draining      atomic.Bool
 
 	// open is every live session, so a shutdown can END them rather than let the process exit from
 	// under them. See CloseAll.
-	openMu sync.Mutex
-	open   map[string]*websocket.Conn
+	openMu     sync.Mutex
+	open       map[string]*websocket.Conn
+	perSubject map[string]int32
 }
 
 // streamKinds are what the websocket door serves. ws.files is deliberately absent: it is an HTTP
@@ -48,6 +70,12 @@ var streamKinds = []pass.Kind{pass.KindVMSSH, pass.KindVMSerial, pass.KindVMVNC,
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/session", s.handleSession)
+	// The file kind. Separate handlers because these are ordinary HTTP requests with ordinary
+	// answers, and because they are a DIFFERENT GRANT: a terminal pass must not read files and a
+	// file pass must not open a shell.
+	mux.HandleFunc("GET "+files.PathList, s.handleFiles)
+	mux.HandleFunc("GET "+files.PathContent, s.handleFiles)
+	mux.HandleFunc("GET "+files.PathDownload, s.handleFiles)
 	// Everything else, including every path that looks close, is a 404 with no body worth reading.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -116,6 +144,23 @@ func (s *Server) CloseAll(code int, reason string) int {
 	case <-time.After(6 * time.Second):
 	}
 	return len(conns)
+}
+
+// addForSubject changes one subject's live count and returns the new value.
+func (s *Server) addForSubject(sub string, delta int32) int32 {
+	s.openMu.Lock()
+	defer s.openMu.Unlock()
+	if s.perSubject == nil {
+		s.perSubject = map[string]int32{}
+	}
+	s.perSubject[sub] += delta
+	n := s.perSubject[sub]
+	if n <= 0 {
+		// Removed rather than left at zero: a map keyed by subject that never forgets is a slow leak
+		// on a cluster with staff turnover.
+		delete(s.perSubject, sub)
+	}
+	return n
 }
 
 func (s *Server) track(jti string, conn *websocket.Conn) {
@@ -196,6 +241,20 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.live.Add(-1)
 
+	// One person may not fill the gate. Counted per SUBJECT rather than per connection source: the
+	// source is a proxy address here, and the thing worth bounding is a person's own appetite.
+	if s.MaxPerSubject > 0 {
+		if n := s.addForSubject(p.Sub, 1); n > s.MaxPerSubject {
+			s.addForSubject(p.Sub, -1)
+			s.closeWith(conn, refuseClose(CloseAtCapacity,
+				"you already have as many sessions open as this cluster allows",
+				fmt.Sprintf("subject holds %d sessions", n-1)))
+			logger.Warn("session refused: this subject is at its own ceiling", "held", n-1)
+			return
+		}
+		defer s.addForSubject(p.Sub, -1)
+	}
+
 	// STEP 10: burn the pass. BEFORE the dial, so a pass is spent by the attempt rather than by the
 	// success: a pass that survives a failed dial is a pass that can be retried by whoever captured
 	// it.
@@ -230,18 +289,102 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 	s.track(p.JTI, conn)
 	defer s.untrack(p.JTI)
 
+	/*
+	 * AN ABSOLUTE LIMIT ON THE SESSION, closed with a STATUS rather than by cancelling the pipe.
+	 *
+	 * Cancelling the pipe's context would drop the connection with no close frame, which is the one
+	 * ending a client cannot interpret; see the comment on Pipe. Closing both ends with a status
+	 * makes the blocked reads return a proper close error and the client learns why.
+	 */
+	if s.MaxSessionAge > 0 {
+		timer := time.AfterFunc(s.MaxSessionAge, func() {
+			logger.Warn("session reached its time limit", "limit", s.MaxSessionAge.String())
+			_ = conn.Close(websocket.StatusCode(CloseDraining),
+				"this session reached its time limit; open another")
+			_ = upstream.Close(websocket.StatusGoingAway, "")
+		})
+		defer timer.Stop()
+	}
+
 	logger.Info("session open", "waited", s.now().Sub(start).String())
 	pipeErr := Pipe(r.Context(), conn, upstream)
 	logger.Info("session closed", "duration", s.now().Sub(start).String(), "error", errText(pipeErr))
 	conn.Close(websocket.StatusNormalClosure, "")
 }
 
-// claim burns the pass: memory first for the common retry, then the durable Lease.
+/*
+handleFiles serves the read-only file endpoints.
+
+REFUSED BEFORE THE WORK, with an ordinary HTTP status, because these are ordinary requests: a client
+can read a body here, so there is no reason to complete anything before saying no. That is the
+opposite of the websocket path, where a browser can read no body from a refused upgrade and the
+refusal has to arrive as a close code.
+
+SINGLE USE IS NOT CLAIMED FOR THIS KIND, deliberately. A file browser makes many requests over a
+minute or two of somebody clicking about, and a credential spent by the first request cannot serve
+the second. The bound on this kind is its five-minute lifetime and the fact that it can only ever
+read one workspace's files.
+*/
+func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
+	if s.draining.Load() {
+		http.Error(w, "this gate is draining", http.StatusServiceUnavailable)
+		return
+	}
+
+	token, err := files.BearerToken(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Bearer")
+		http.Error(w, "a session pass is required", http.StatusUnauthorized)
+		return
+	}
+
+	p, err := pass.Verify(token, s.Config.Keys, s.now, s.Config.Skew)
+	if err != nil {
+		// One message for every cause, as everywhere else: the gate must not tell a prober which
+		// guess was closer. The real reason goes to the gate's own log.
+		s.Log.Warn("file request refused", "reason", err.Error(), "remote", clientIP(r))
+		http.Error(w, refusedText, http.StatusUnauthorized)
+		return
+	}
+	if p.AID != s.Config.AID || p.CID != s.Config.CID {
+		http.Error(w, "this pass is for another cluster", http.StatusForbidden)
+		return
+	}
+	if p.Kind != pass.KindWSFiles {
+		// A terminal pass must not read files. Both name this workspace and both are workspace
+		// kinds, but they are different grants with different lifetimes and different doors.
+		s.Log.Warn("a non-file pass was presented to a file endpoint", "kind", string(p.Kind))
+		http.Error(w, refusedText, http.StatusUnauthorized)
+		return
+	}
+
+	s.Files.Serve(w, r, p, token)
+}
+
+/*
+claim burns the pass: memory first for the common retry, then the durable Lease.
+
+THE MEMORY ENTRY IS GIVEN BACK WHEN THE DURABLE CLAIM COULD NOT BE CONFIRMED, and that asymmetry is
+the whole subtlety here.
+
+Without it, ONE transient apiserver fault burnt the pass in this process for ever while creating no
+Lease at all. The next attempt with the same pass hit the memory layer and was told "already used",
+which is a LIE: it was never used, nothing was recorded anywhere durable, and the same pass presented
+to a second replica would have opened a session. The person retrying is told the one thing that makes
+them stop retrying, and the operator sees a replay that never happened.
+
+Only ErrUnavailable gives the entry back. ErrReplayed must not: that means the Lease exists, the pass
+really is spent, and forgetting it here would let this process serve it again.
+*/
 func (s *Server) claim(ctx context.Context, p *pass.Payload) error {
 	if s.Memory.Take(p.JTI, p.ExpiresAt()) {
 		return replay.ErrReplayed
 	}
-	return s.Claimer.Claim(ctx, p.JTI, p.ExpiresAt())
+	err := s.Claimer.Claim(ctx, p.JTI, p.ExpiresAt())
+	if err != nil && errors.Is(err, replay.ErrUnavailable) {
+		s.Memory.Forget(p.JTI)
+	}
+	return err
 }
 
 func (s *Server) dial(ctx context.Context, p *pass.Payload, token string) (*websocket.Conn, error) {

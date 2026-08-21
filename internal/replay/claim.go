@@ -87,6 +87,23 @@ func (m *Memory) Take(jti string, expiresAt time.Time) (alreadySeen bool) {
 	return false
 }
 
+/*
+Forget removes an entry, for the ONE case where the durable claim could not be confirmed.
+
+The in-process set is an optimisation in front of the Lease, and an optimisation must never be more
+certain than the thing it fronts. When the apiserver could not tell us whether a pass is spent, this
+process must not go on insisting that it is: nothing durable was written, another replica would serve
+the same pass, and the person retrying would be told "already used" about a pass that was never used.
+
+Deliberately NOT called when the Lease says AlreadyExists. That is the pass genuinely being spent,
+and forgetting it here would let this process serve it again.
+*/
+func (m *Memory) Forget(jti string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.seen, jti)
+}
+
 // Sweep drops entries whose pass has expired. They can never be presented again, so keeping them is
 // only memory growth.
 func (m *Memory) Sweep(now time.Time) int {
