@@ -1,0 +1,358 @@
+{
+  "comment": "Golden vectors for the RunOS session pass. Read by BOTH the Go verifier in sessiongate and the TypeScript verifier in conductor; both must agree on every verdict. Regenerate with: go test ./internal/pass -run TestUpdateVectors -update. The private key seed is a TEST key and signs nothing real.",
+  "kid": "a1b2c3d4e5f60718",
+  "publicKeyB64url": "rZZ0cszZbgb2S7pRSHlDDuWi-2qWr11MRXRTe4eOE78",
+  "privateKeySeedB64url": "cnVub3Mtc2Vzc2lvbi1nYXRlLXRlc3Qta2V5LTAwMDE",
+  "nowUnix": 1755800030,
+  "skewSeconds": 30,
+  "vectors": [
+    {
+      "name": "valid-vm.ssh",
+      "why": "a well-formed pass of every kind must verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ",
+      "expect": "valid"
+    },
+    {
+      "name": "valid-vm.serial",
+      "why": "a well-formed pass of every kind must verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc2VyaWFsIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.ft-xYjJ7J64LsnYkEzk6VK--mOyH4IG6WQSS0Jtv0pAxdRHfiQ8T-rEl8W8icjbtApovVky0vvDKo22mAjk5Bg",
+      "expect": "valid"
+    },
+    {
+      "name": "valid-vm.vnc",
+      "why": "a well-formed pass of every kind must verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0udm5jIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.z4Zo-ZJN_wZJkXd2neXRp34Gk7mXMOZExRiOW4aV5C05COAmxCqd34sQoeuOqkYsVwG3R85RmrB0agyalgS2Dg",
+      "expect": "valid"
+    },
+    {
+      "name": "valid-ws.terminal",
+      "why": "a well-formed pass of every kind must verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MudGVybWluYWwiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6IiIsImRpciI6Ii9ob21lL2Rldi9wcm9qIiwic3ZjIjoicnVub3N0dHktZ2syeHE3bXVlemJuNGh2dDBwbHJ5Y3NkM2ZhMSIsInVpZCI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ1c2VyIjoiZGV2In19.RebP9yHL71sR4LfFRZRwS7BnyjTCu7wueREJFHNX5F3j4qjTQxwpR3Yy1199EX-xVDX4yYBh6BDow1_HFrC7Dg",
+      "expect": "valid"
+    },
+    {
+      "name": "valid-ws.files",
+      "why": "a well-formed pass of every kind must verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDMwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MuZmlsZXMiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6IiIsImRpciI6Ii9ob21lL2Rldi9wcm9qIiwic3ZjIjoicnVub3N0dHktZ2syeHE3bXVlemJuNGh2dDBwbHJ5Y3NkM2ZhMSIsInVpZCI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ1c2VyIjoiZGV2In19.-S7ktX4muNHb_oU1t0HSLn2axoQBHbZ3pLX1sQzJIoT1y18JF2UIBvhF7mNzILGtgr_PI9qH0pd4uXoFmWTAAg",
+      "expect": "valid"
+    },
+    {
+      "name": "wrong-prefix",
+      "why": "the version prefix is inside the signature, so a v2 pass cannot be read as v1",
+      "token": "runos_pass_v2.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "two-segments",
+      "why": "a pass has exactly three segments",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "four-segments",
+      "why": "a fourth segment must be refused, not ignored",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ.extra",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "empty-payload-segment",
+      "why": "an empty segment is not a payload",
+      "token": "runos_pass_v1..AAAA",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "padded-base64",
+      "why": "a subprotocol value must be an HTTP token and '=' is not one",
+      "token": "runos_pass_v1.eyJ2IjoxfQ==.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "standard-alphabet-base64",
+      "why": "'+' and '/' are not token characters either",
+      "token": "runos_pass_v1.eyJ2Ijox+w.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "short-signature",
+      "why": "a truncated signature is a transport fault, named as one",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.AAAA",
+      "expect": "pass_malformed"
+    },
+    {
+      "name": "bad-signature",
+      "why": "a flipped signature byte must not verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DA",
+      "expect": "pass_bad_signature"
+    },
+    {
+      "name": "payload-tampered",
+      "why": "changing the payload after signing must not verify",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tb3RoZXIiLCJucyI6InZtZ3JvdXAtenp6enoifX0.C5-TC8x6C4K63IFZOODl_C7l-rEga_BOv3HlTVBkczV3i8yKM2odUBuMxGaSSAQTRNwdu_gvOAVpgTKqEIY2DQ",
+      "expect": "pass_bad_signature"
+    },
+    {
+      "name": "unknown-kid",
+      "why": "a kid the gate does not hold is refused without naming the keys it does hold",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImZmZmZmZmZmZmZmZmZmZmYiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.GtztTfoPCkttcFA_Mzp9gRUg7FRl6NBn_R302CARcqox3Jva9tPctYIn1yp1Qw0QEOk8_0j4YOIF14ZDCkXqBg",
+      "expect": "pass_unknown_key"
+    },
+    {
+      "name": "kid-wrong-length",
+      "why": "kid is exactly 16 lowercase hex characters",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjMyIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsInZtIjp7Im5hbWUiOiJ2bS1hYmNkZSIsIm5zIjoidm1ncm91cC1hMWIyYyJ9fQ.2l7-Ki_pCcqp1HGTJY0NiEkUQA0MNV7naiKt57F2GtFkXCMlZndOiWI5izAVPgAn_mRFgDBIVDmxzBj4BUOTDw",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "kid-uppercase",
+      "why": "an uppercase kid would be a second name for one key",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6IkExQjJDM0Q0RTVGNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.SxPrv3LlKqm8PS9oaUq9fgnQM5B7U9FNxMBN7kEmJ_aJVUSTpvlG8fqfZGtYnEWO3JQkmVdY2bTqt4mCZcRYBA",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "payload-not-object",
+      "why": "a JSON array is valid JSON and not a pass body",
+      "token": "runos_pass_v1.WzEsMiwzXQ.BG8mFAZOWdXjCEfqeJpUGh7F7VyTKR4-st4FAkFPuvBKVLNb3iF318BqLYmxrBNBkeYYXUHsXg-6hkraqGPvCw",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "payload-null",
+      "why": "bare null is valid JSON and not a pass body",
+      "token": "runos_pass_v1.bnVsbA.HHmzbN5NQFkgWnrl_MbxhklPWHWBD4kGdwnCTtNPCU_aIerySy6i2HvloTYtTV6WFcWYkN8KG7tA0c9vEbBXDg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "payload-trailing-content",
+      "why": "bytes after the object were signed and never read",
+      "token": "runos_pass_v1.eyJ2IjoxfXsidiI6Mn0.JB-jVyFfQAQmrlptSGQQLzqB0pt0DGFtKB8G5qzzT93y4zNF0pc-1ztz3vsisBfkqj3OLcpPPUhtYiAl7cL2Dg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "unknown-field",
+      "why": "an unknown field is refused, which is what stops a smuggled port",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwidm0iOnsibnMiOiJ2bWdyb3VwLWExYjJjIiwibmFtZSI6InZtLWFiY2RlIn0sInBvcnQiOjIyMjJ9.prTeRwi4ECwVUS7A-LFLfU6kQVkdObEnMPckajp9OySaB2t0Qmzi8luAHA5KC0zGNmtmlGs03GpKNFNe7iPJBQ",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "unknown-field-in-vm",
+      "why": "and inside the target block too",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwidm0iOnsibnMiOiJ2bWdyb3VwLWExYjJjIiwibmFtZSI6InZtLWFiY2RlIiwicG9ydCI6MjIyMn19.QL0CMESup52CJZhh4GPnkN33X-fbFoypNPHXIZt8x8LXEsZZX7Z9KfA50oF29Md6ytW3sHXyVi1id25pHYVGAA",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "duplicate-key",
+      "why": "two parsers may keep different values for a duplicated key; refuse the shape",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ3cy5maWxlcyIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwidm0iOnsibnMiOiJ2bWdyb3VwLWExYjJjIiwibmFtZSI6InZtLWFiY2RlIn19.lk6Bra3YiIRgArZihjI-tblnHbec_k8HVHz0GUuMOv-DUrb5nZGDupnMYRdZeqhBogJleDDYfEA1fTq-F2-GBg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "missing-field",
+      "why": "every field is required",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ.ryfNlujKGHe5RSsthYdE0NXdrT1mhzLsjlCKIzg7afrlEIfHnq4tl8lLlbNP5RuQH3DpCFg3l_32A3Hu_lhuCQ",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "wrong-version",
+      "why": "a version 2 body under a v1 prefix",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoyLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.j9qHrKsh9X7IQOr6FrutcpNz4u_UnCKWTl2Y4cDNYKSm6JW7v5Cqt1OOA71DvRQG01XFMYGGSX4STekcU-TYDw",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "unknown-kind",
+      "why": "a kind the gate does not implement",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0ucmRwIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.mHgkFGEEaI2ZOwCugsRrbSkOml6yDpUd8qxZ3E4d1ErlWJzmP8FoTnsFlDNUVF4bLLx4ibYRDCHlOQ0DjTw1BA",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "sub-non-ascii",
+      "why": "a homoglyph subject is a second identity for one person",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmzpExIiwidiI6MSwidm0iOnsibmFtZSI6InZtLWFiY2RlIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.r9Owoc1MDNrOpbv-4uy8qip21n-luY7VymrM1P56oETet-HQG2vkoOE0KJyRADzpqDrISN51Q4a7hhNAY6AKAg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-fractional",
+      "why": "1755800060.0 is one number in JavaScript and another in Go",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MC4wLCJhaWQiOiJyandybiIsImNpZCI6InY2YiIsInN1YiI6InUxIiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJ2bSI6eyJucyI6InZtZ3JvdXAtYTFiMmMiLCJuYW1lIjoidm0tYWJjZGUifX0.qBxAfuiZheWBxeefxrghsdbQdPw0Rg-EcitJ2NsdnNVo7UXecqwcAS7I3296Y4Xq9lG0OvOv6Wo4igpCYNNyAQ",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-exponent",
+      "why": "1.75580006e9 is the same trap in another spelling",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MS43NTU4MDAwNmU5LCJhaWQiOiJyandybiIsImNpZCI6InY2YiIsInN1YiI6InUxIiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJ2bSI6eyJucyI6InZtZ3JvdXAtYTFiMmMiLCJuYW1lIjoidm0tYWJjZGUifX0.T_rHf5yncpiGwiPMQt4ZH1tbCm3DYiDTtvIpZT4_86VSVysJ-MenCiCuXGmcphp0-yZC3OjnMZ_brI3JruJaAQ",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-string",
+      "why": "a quoted number is not a number",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6IjE3NTU4MDAwNjAiLCJhaWQiOiJyandybiIsImNpZCI6InY2YiIsInN1YiI6InUxIiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJ2bSI6eyJucyI6InZtZ3JvdXAtYTFiMmMiLCJuYW1lIjoidm0tYWJjZGUifX0.n54Dlu0_KqCfadp99hp9i6fF9o7eYCkDN3ZlLqpFFOy5yNVs8b1a37B-AEp4dKvXBygqnGHFl9nlo55Q9saXDw",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "iat-negative",
+      "why": "a negative issue time",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOi0xLCJleHAiOjE3NTU4MDAwNjAsImFpZCI6InJqd3JuIiwiY2lkIjoidjZiIiwic3ViIjoidTEiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ.04LwR4T21WDWiA_Jv6L6SRnFLj5aNKi4XnfsyB5YMl6mE84ytycREXs7MpbhMk5Wax1z9RnILr6g4oNLYzf8Ag",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-huge",
+      "why": "an exp beyond int64 seconds",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6OTk5OTk5OTk5OTk5OTk5OTk5OTksImFpZCI6InJqd3JuIiwiY2lkIjoidjZiIiwic3ViIjoidTEiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ.klISwavsQJdo7Cpa_I84u-flDAJkEtBbPYdsxvMfngbDOpgDWn6h9RarjOz0gKd8y7Ex7w8WPR-cfQ-GVM5DDg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "iat-string",
+      "why": "and the same trap on iat, which Go accepted into a json.Number until this vector",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOiIxNzU1ODAwMDAwIiwiZXhwIjoxNzU1ODAwMDYwLCJhaWQiOiJyandybiIsImNpZCI6InY2YiIsInN1YiI6InUxIiwia2luZCI6InZtLnNzaCIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJ2bSI6eyJucyI6InZtZ3JvdXAtYTFiMmMiLCJuYW1lIjoidm0tYWJjZGUifX0.heX24aTprJxkBo5NR7IjWKoA6eTj7N6dnMd7VMQVsdFHLPWpwelvjAkg4tnj_VLCp6Iv7d8SRoK2fXf8lKudDg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-leading-zero",
+      "why": "a number with two readings has no place in a credential",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MDE3NTU4MDAwNjAsImFpZCI6InJqd3JuIiwiY2lkIjoidjZiIiwic3ViIjoidTEiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ._6gUNIlZCIJQfCNiuD1Q-NcpjA6aOIICm12ZdSnbtysWSMA0iXboykiPgtkdIqeIpqBTTKfuJpUtJFFLDBDNCg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "exp-plus-prefix",
+      "why": "a leading plus is legal in some parsers and not in JSON",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6KzE3NTU4MDAwNjAsImFpZCI6InJqd3JuIiwiY2lkIjoidjZiIiwic3ViIjoidTEiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ.RpvYDT9_uTIIuwzx4rGcCvJfDa_e6mwvphP5D7XlKt2OgCgWCgLnnR-jY_Vy3lAfGf_3wAL5rvx5L_4lU-DFDg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "expired",
+      "why": "exp in the past, beyond the skew allowance",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTAwMDA2MCwiaWF0IjoxNzU1MDAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.w6xui8noLKK8LdND0p5l84ZWLbRcbpO-whl3AwTWXF57XaQj-SgfJ5As9nV8tf3d2PhVv9KBI908KkXTLXhDCg",
+      "expect": "pass_expired"
+    },
+    {
+      "name": "not-yet-valid",
+      "why": "iat in the future, beyond the skew allowance",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTkwMDA2MCwiaWF0IjoxNzU1OTAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.3vBGKVMTFskC054gsTj5TlK7oUkYg2i5RPSBHj1lgHfMNdzIBGtSxVtLFNfwOsVsfTx_wxmXOgZSna_7RbW_Cw",
+      "expect": "pass_expired"
+    },
+    {
+      "name": "exp-equals-iat",
+      "why": "a pass that expires when it was issued",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDAwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.KLSHOhu7YUX2QFcblsGq61T05yre3NcyZyvI3c99rs-G-zYTXndqXQsXh08WPXAjLnENdwJcgsNdu2wUvZI9Dw",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "exp-before-iat",
+      "why": "an inverted window",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTc5OTAwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.FlVSLuFXbVR5TnXp7cuGQGJsVoGQCddUHKDkqbU84_Gg-Uhxi4T3rjx0NECykO1HEBYSU08DbDErUWRoyGzSAw",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "lifetime-over-cap",
+      "why": "a session pass may live 60 seconds however long it claims",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTg4NjQwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.uGnpB83Hnb31DbW2ugnpC2cvjvnHu9s2GqdrqPcsGC-mMc49AYmkxHEttBy-V0j_tfivOthN5nKkztrjd9OOCg",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "ws-files-lifetime-over-cap",
+      "why": "and ws.files 300, not more",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDYwMCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MuZmlsZXMiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6IiIsImRpciI6Ii9ob21lL2Rldi9wcm9qIiwic3ZjIjoicnVub3N0dHktZ2syeHE3bXVlemJuNGh2dDBwbHJ5Y3NkM2ZhMSIsInVpZCI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ1c2VyIjoiZGV2In19.oaCMFqzC9838iHSu_188PLGF1QRQ_zHz3gwpXB3HiRPbOqmG1Qhfm2RV638ZglqP40yEcXfVXnTJXLKTECzsDA",
+      "expect": "pass_lifetime"
+    },
+    {
+      "name": "clock-skew-tolerated",
+      "why": "a pass a few seconds stale still opens, or a fast cluster clock breaks every session",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDAyNSwiaWF0IjoxNzU1Nzk5OTY1LCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.6iyaTvtgxnxRyVr0pDenxwib4s4FIBoNki2UlMBRmCq9FCBmgCevu5nR6idzMa0liVJ_OwRmD39zUROmuP0_Aw",
+      "expect": "valid"
+    },
+    {
+      "name": "both-targets",
+      "why": "the interesting version rides a vm block on a ws kind",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ3cy5maWxlcyIsIm9yZyI6Imh0dHBzOi8vY29uc29sZS5ydW5vcy5jb20iLCJ2bSI6eyJucyI6InZtZ3JvdXAtYTFiMmMiLCJuYW1lIjoidm0tYWJjZGUifSwid3MiOnsic3ZjIjoicnVub3N0dHktdTEiLCJ1aWQiOiJ1MSIsInVzZXIiOiJkZXYiLCJkaXIiOiIiLCJjbWQiOiIifX0.9P5_ejhFmpEx3SOiRQmZvsXnv4Yt0Ud6s_Nk22GXE2TsxjXEwynuNDhTGnkxbpBLtZYxVhmh2nadgrowcELrCw",
+      "expect": "pass_target"
+    },
+    {
+      "name": "no-target",
+      "why": "a pass with nothing to open",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIn0.W-WLf5PCugrJxsokvxFeg7spkNa-Spr0uasscFmqKlUlww6cvCu9asIjdz2i5KPqdOa8z83rWJvLZ6b4-JN7Dg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "kind-target-mismatch",
+      "why": "a vm kind carrying a ws block",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwid3MiOnsic3ZjIjoicnVub3N0dHktdTEiLCJ1aWQiOiJ1MSIsInVzZXIiOiJkZXYiLCJkaXIiOiIiLCJjbWQiOiIifX0.8T6spWO40x62F_I8Uryn9oUWvN7Lhb46ZLCwUuaNyCmS_o8S0_mUenkwmPqq1fqIzaXr84Kza638yt1XDgf7DA",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ns-kube-system",
+      "why": "a signed pass must not be able to name a cluster namespace",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6Imt1YmUtc3lzdGVtIn19.NPbkzUjs7VRcFCydGCe_2suSRSFHQ-V_zlPrK7JOt383x2kHYdIP2vbqsBn82M8ngtiwbihFpnd-ytJ60HaaCA",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ns-traversal",
+      "why": "dot-dot in a namespace",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtLi4va3ViZS1zeXN0ZW0ifX0.o-hYzcMV_cvOXt2wo2XUPQyzRwPQNG9SnKWpeAwE8ILnuI0As-7RgRd-5MKlmF1NvOfeOafLISXIV7FvqCOIAQ",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ns-gate-namespace",
+      "why": "the gate's own namespace is not a VM group",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InJ1bm9zIn19.XZGQUdHSluRKMbnyU0M86WMPgmBHgD_y1G1ZdDAAA74xDTrdayLAy0hyN06x6k1je_EEA7vYBbRPYKtCNWYaDw",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-subresource-injection",
+      "why": "a name that continues the subresource path",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUvcG9ydGZvcndhcmQvOTk5OS90Y3AiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.Rz_TI-E0HeRjJUFd7FlrbsR62kp4mGZ0do9b1hipU2xyODDiya0-Nmee1y1TYgA08mxzAxl2jJlOe4uLN_FsCg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-encoded-slash",
+      "why": "an encoded slash is still a slash to something downstream",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUlMmZwb3J0Zm9yd2FyZCIsIm5zIjoidm1ncm91cC1hMWIyYyJ9fQ.HYyx0J7Nl5DyqJRXGlBNAXVH73hPFdLA_fli3n_Zj-lgGssecaThsQpL9vwl9Fmco5Dsya0wT-WRkh0a9PLJAg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-query-injection",
+      "why": "a query string appended to the name",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGU_cG9ydD05OTk5IiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.2SJ3o-leHg2nGF2RtBaFyZO6Zd5K8gTRBl3gKk_mfBPoR7sulGo7H5nxJ5_2nFwO99pALmUSWYkDRYoUN5JHBw",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-absolute-url",
+      "why": "a name that is a whole URL",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoiaHR0cHM6Ly9ldmlsLmV4YW1wbGUuY29tL3giLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.JzDulnU3OBFrvYBmT2lTWvSX5IeoPRFI8Tvd58c6bec6G8GPIs8VE4g7hMg9HmsJVu1GyRRZUHq5n95Qq-YaCQ",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-uppercase",
+      "why": "Kubernetes object names are lowercase",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoiVk0tQUJDREUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.K9Rls0xPSPKROpoSzMb8TZW3iBZUm1KHz3nG2xUOCkunCZj_Fkn-4FVzSFAMCV2cVcvOrFjR4F62eEysDMLCDg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "name-empty",
+      "why": "an empty machine name",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoiIiwibnMiOiJ2bWdyb3VwLWExYjJjIn19.3pGVC8yqFzNJKpHljctWllROJB9wWb0s7KnhiI0TNv88qpylylT-ono4UG3I8RNxJAHzdzyhnojSbU4n7Im6Cg",
+      "expect": "pass_target"
+    },
+    {
+      "name": "ws-svc-injection",
+      "why": "the same path injection through a workspace service name",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoid3MudGVybWluYWwiLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsIndzIjp7ImNtZCI6IiIsImRpciI6IiIsInN2YyI6InJ1bm9zdHR5LXUxLy4uLy4uL3giLCJ1aWQiOiJ1MSIsInVzZXIiOiJkZXYifX0.idDgzCtFh1Kv9YMzsiLhrZ2ZI5YVm7ysacwu1X2dwFW-m8raq_LpCD6hfNtQI2b9Ex14VEvl02UqfHZ9c_8tCA",
+      "expect": "pass_target"
+    },
+    {
+      "name": "jti-wrong-length",
+      "why": "jti becomes a Kubernetes object name and its length is fixed",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5YWJjZGVmIiwia2lkIjoiYTFiMmMzZDRlNWY2MDcxOCIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwic3ViIjoiR0syeFE3bVVlWmJONGhWdDBwTHJZY1NkM2ZBMSIsInYiOjEsInZtIjp7Im5hbWUiOiJ2bS1hYmNkZSIsIm5zIjoidm1ncm91cC1hMWIyYyJ9fQ.KIf4JSb762MUUfaHIyjxlTQp-vJtM1kdMutjaHTg4wg620qmVoFw3NNzr5njFWG5aFdCPjZ--3wnuUrf56fLDA",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "jti-uppercase",
+      "why": "an uppercase jti is not a valid object name, so single-use would silently not apply",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiIwMTIzNDU2Nzg5QUJDREVGMDEyMzQ1Njc4OUFCQ0RFRiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.lnrVz4Jf9noM12YHdhPpyBcAiJ3fldcsVRWkTG1J13QgMYTvo_7iWFqSCYggBE4hbNeEyCWLubbbf8yF6jcyAQ",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "jti-not-hex",
+      "why": "and it must actually be hex",
+      "token": "runos_pass_v1.eyJhaWQiOiJyandybiIsImNpZCI6InY2YiIsImV4cCI6MTc1NTgwMDA2MCwiaWF0IjoxNzU1ODAwMDAwLCJqdGkiOiJ6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6eiIsImtpZCI6ImExYjJjM2Q0ZTVmNjA3MTgiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInN1YiI6IkdLMnhRN21VZVpiTjRoVnQwcExyWWNTZDNmQTEiLCJ2IjoxLCJ2bSI6eyJuYW1lIjoidm0tYWJjZGUiLCJucyI6InZtZ3JvdXAtYTFiMmMifX0.TMibXSFJ79Npe9T73IvSZN81QuXnDb6ErJrpHynNGGXFTFzPD42ueM9wHJ2qeIIHI22Tc_D3DQh7-8AKW9G_Dw",
+      "expect": "pass_payload"
+    }
+  ]
+}
