@@ -57,6 +57,16 @@ clean:
 version:
 	@echo "$(VERSION)"
 
+# Ask THIS verifier whether it accepts passes minted by conductor's real code.
+#
+# The golden vectors hold both implementations to the same verdicts on a frozen set of inputs. This
+# is the other direction, and it catches a different failure: conductor emitting something no gate
+# will take, from code paths the vectors never exercise (its own JSON serialiser, its own field
+# order, its own key handling). Needs the conductor repo beside this one.
+.PHONY: crosscheck
+crosscheck:
+	@cd ../conductor && npx tsx scripts/mint-for-gate-crosscheck.ts | (cd ../sessiongate && $(GO) run ./internal/pass/crosscheck)
+
 # ============================================================================
 # Container image (local). CI publishes via .github/workflows/release.yml.
 # ============================================================================
@@ -85,5 +95,6 @@ help:
 	@echo "  make clean      Remove build artifacts"
 	@echo ""
 	@echo "  make image      Build the multiarch image locally (no push)"
+	@echo "  make crosscheck Verify passes minted by conductor (needs ../conductor)"
 	@echo ""
 	@echo "  Releases are cut by pushing a tag: git tag vX.Y.Z && git push origin vX.Y.Z"
