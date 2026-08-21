@@ -106,8 +106,24 @@ func (u *Upstream) DialVM(ctx context.Context, p *pass.Payload) (*websocket.Conn
 	conn, res, err := websocket.Dial(ctx, dialURL, &websocket.DialOptions{
 		HTTPClient: u.HTTP,
 		HTTPHeader: http.Header{"Authorization": {"Bearer " + token}},
-		// No subprotocols. KubeVirt's stream endpoints negotiate none, and offering one it does not
-		// know is a handshake failure rather than a graceful fallback.
+		// No subprotocols, and the reason is not the one you would guess.
+		//
+		// MEASURED 2026-08-21 against KubeVirt 1.9 on cluster v6b, on console, vnc and
+		// portforward/22/tcp, with the same coder/websocket this file uses:
+		//
+		//	offer nothing            -> 101, server names nothing
+		//	offer "nonsense.example" -> 101, server names nothing, NO error
+		//	offer "plain.kubevirt.io" -> 101, server echoes "plain.kubevirt.io"
+		//
+		// So an unknown subprotocol is NOT a handshake failure here; the server simply ignores
+		// it and the client accepts a 101 that names nothing. Offering none is still the right
+		// call, because it is the only option whose behaviour does not depend on KubeVirt's
+		// preference order, but it is a choice about determinism rather than about failure.
+		//
+		// This also settles the hearsay in conductor's old relay (vmConsoleRelay.ts:193), which
+		// claimed "plain.kubevirt.io" was what KubeVirt ADVERTISES. It is not. KubeVirt
+		// advertises nothing. "plain.kubevirt.io" is what virtctl asks for, and KubeVirt echoes
+		// it back because it was asked.
 	})
 	if err != nil {
 		if res != nil {
