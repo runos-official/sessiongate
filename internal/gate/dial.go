@@ -32,6 +32,10 @@ type Upstream struct {
 	Now func() time.Time
 }
 
+// workspaceProtocol is what runostty selects. It must be offered or the handshake fails with
+// "server sent no subprotocol".
+const workspaceProtocol = "runos.tty.v1"
+
 // DialTimeout bounds reaching the far end. A VM whose virt-handler is wedged must not hold a client
 // waiting indefinitely with no close code.
 const DialTimeout = 15 * time.Second
@@ -119,7 +123,17 @@ func (u *Upstream) DialVM(ctx context.Context, p *pass.Payload) (*websocket.Conn
 }
 
 // DialWorkspace opens the terminal endpoint of a workspace pod.
-func (u *Upstream) DialWorkspace(ctx context.Context, p *pass.Payload) (*websocket.Conn, error) {
+//
+// THE PASS IS FORWARDED, and the workspace verifies it again. That is not ceremony: the workspace is
+// the only party that knows whose workspace it is, so it is the only party that can check the pass
+// was minted for THIS one. The alternative would be a shared secret the gate has to read, which
+// means giving the gate permission to read Secrets, and a component that can read one can read them
+// all.
+//
+// Nothing about the session travels in the URL. The user, the working directory and the command all
+// come from the signed bytes at the far end, so anything that could reach port 7681 directly still
+// cannot choose them.
+func (u *Upstream) DialWorkspace(ctx context.Context, p *pass.Payload, token string) (*websocket.Conn, error) {
 	target, err := workspace.Resolve(p)
 	if err != nil {
 		return nil, err
@@ -130,7 +144,9 @@ func (u *Upstream) DialWorkspace(ctx context.Context, p *pass.Payload) (*websock
 	// Plain ws:// inside the cluster: the hop is pod to pod inside the CNI, the workspace serves
 	// plain HTTP on 7681, and a network policy is what keeps anything else off that port.
 	conn, res, err := websocket.Dial(ctx, target.URL("ws", "/"), &websocket.DialOptions{
-		Subprotocols: []string{"tty"},
+		// The workspace answers with the plain protocol name and never echoes the pass, exactly as
+		// this gate does for its own clients.
+		Subprotocols: []string{workspaceProtocol, PassProtocolPrefix + token},
 	})
 	if err != nil {
 		if res != nil {

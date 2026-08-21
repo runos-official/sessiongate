@@ -133,7 +133,7 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upstream, err := s.dial(r.Context(), p)
+	upstream, err := s.dial(r.Context(), p, decision.Token)
 	if err != nil {
 		// NOTHING UNDOES THE CLAIM HERE. The tempting cleanup is exactly the hole: a gate that
 		// releases the pass when the dial fails has made that pass replayable by whoever holds it.
@@ -157,11 +157,13 @@ func (s *Server) claim(ctx context.Context, p *pass.Payload) error {
 	return s.Claimer.Claim(ctx, p.JTI, p.ExpiresAt())
 }
 
-func (s *Server) dial(ctx context.Context, p *pass.Payload) (*websocket.Conn, error) {
+func (s *Server) dial(ctx context.Context, p *pass.Payload, token string) (*websocket.Conn, error) {
 	if p.Kind.IsVM() {
 		return s.Upstream.DialVM(ctx, p)
 	}
-	return s.Upstream.DialWorkspace(ctx, p)
+	// The workspace verifies the pass again, so the raw token travels one more hop. It goes no
+	// further than that: the workspace is the last party that needs it.
+	return s.Upstream.DialWorkspace(ctx, p, token)
 }
 
 func (s *Server) closeWith(conn *websocket.Conn, d Decision) {

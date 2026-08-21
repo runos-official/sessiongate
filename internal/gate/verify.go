@@ -68,6 +68,10 @@ type Decision struct {
 	LogReason string
 	// Payload is set only when Allow is true.
 	Payload *pass.Payload
+	// Token is the raw pass, set only when Allow is true, and forwarded ONLY to a workspace, which
+	// verifies it again because it is the only party that knows whose workspace it is. It is never
+	// logged and never sent to a VM: KubeVirt authenticates the gate's own service account.
+	Token string
 }
 
 func refusePre(status int, text, reason string) Decision {
@@ -194,7 +198,7 @@ func Verify(req Request, cfg Config, now func() time.Time) Decision {
 		}
 	}
 
-	return Decision{Allow: true, Payload: p}
+	return Decision{Allow: true, Payload: p, Token: token}
 }
 
 func kindAllowed(k pass.Kind, allowed []pass.Kind) bool {
