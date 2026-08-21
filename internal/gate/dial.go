@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/coder/websocket"
@@ -158,43 +157,73 @@ func (u *Upstream) DialWorkspace(ctx context.Context, p *pass.Payload, token str
 	return conn, nil
 }
 
-// Pipe copies bytes both ways until either side stops, and returns the first error that mattered.
-//
-// A PORT OF conductor/src/api/websocket/vmConsolePipe.ts, and the behaviour it pins is worth
-// stating: whichever side closes first, the other is closed too, and neither goroutine is left
-// holding a connection nobody reads. A leaked half-pipe is how a gate accumulates goroutines until
-// it dies of something that looks unrelated.
+/*
+Pipe copies bytes both ways until either side stops, and ends the OTHER side cleanly.
+
+MEASURED 2026-08-21, and this cost a real client a wrong error message. The first version gave both
+directions a derived, cancellable context and cancelled it to unblock the other goroutine. In
+coder/websocket a read whose context is cancelled CLOSES THE CONNECTION ABRUPTLY: the TCP goes away
+with no close frame. The CLI, correctly, refuses to treat a frameless drop as a clean ending, because
+that is exactly what a broken session looks like, so a perfectly normal one-shot ended with
+
+	Error: failed to get reader: failed to read frame header: EOF
+
+A gate that cannot end a session cleanly makes every client either wrong about failures or wrong
+about successes.
+
+So: reads use the REQUEST's context and are never cancelled to control flow. When one direction ends,
+the other connection is CLOSED WITH A STATUS, which makes its blocked read return a proper close
+error, and the status is carried across so a normal close stays a normal close.
+*/
 func Pipe(ctx context.Context, client, upstream *websocket.Conn) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	type ending struct {
+		err  error
+		from string
+	}
+	done := make(chan ending, 2)
 
-	var once sync.Once
-	var first error
-	done := make(chan struct{}, 2)
-
-	copyOneWay := func(dst, src *websocket.Conn) {
-		defer func() { done <- struct{}{} }()
+	copyOneWay := func(dst, src *websocket.Conn, from string) {
 		for {
 			typ, data, err := src.Read(ctx)
 			if err != nil {
-				once.Do(func() { first = err })
-				cancel()
+				// Carry the peer's own ending across rather than inventing one. A far end that said
+				// "normal closure" must not reach the client as an abnormal drop.
+				dst.Close(closeStatusFor(err), "")
+				done <- ending{err: err, from: from}
 				return
 			}
 			if err := dst.Write(ctx, typ, data); err != nil {
-				once.Do(func() { first = err })
-				cancel()
+				src.Close(closeStatusFor(err), "")
+				done <- ending{err: err, from: from}
 				return
 			}
 		}
 	}
 
-	go copyOneWay(upstream, client)
-	go copyOneWay(client, upstream)
+	go copyOneWay(upstream, client, "client")
+	go copyOneWay(client, upstream, "upstream")
 
+	first := <-done
+	// The second goroutine is unblocked by the close above. Waiting for it is what keeps a
+	// half-pipe from outliving the session and leaking a goroutine per connection.
 	<-done
-	// The second goroutine is unblocked by the cancel above; waiting for it here is what keeps a
-	// half-pipe from outliving the session.
-	<-done
-	return first
+	return first.err
+}
+
+/*
+closeStatusFor turns one side's ending into the status to close the other side with.
+
+A close frame the peer sent is reused as-is. Anything else, including a frameless drop, becomes
+"going away", which is honest: this end is finishing and the reason was not stated in a frame.
+Inventing a normal closure for a broken connection is the mistake that makes a client report success
+for a session that died.
+*/
+func closeStatusFor(err error) websocket.StatusCode {
+	if status := websocket.CloseStatus(err); status != -1 {
+		if status == websocket.StatusNoStatusRcvd || status == websocket.StatusAbnormalClosure {
+			return websocket.StatusNormalClosure
+		}
+		return status
+	}
+	return websocket.StatusGoingAway
 }
