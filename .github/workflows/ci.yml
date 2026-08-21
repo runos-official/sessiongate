@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "gofmt -l reported files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Run go vet
+        run: go vet ./...
+
+      # The gate is CGO-free and ships in a distroless image, so the binary must
+      # build with CGO off. Verify it here so a C dependency can't creep back in
+      # and break the static cross-compiled release image.
+      - name: Build (CGO off)
+        env:
+          CGO_ENABLED: "0"
+        run: go build ./...
+
+      # The race detector needs cgo; the ubuntu runner ships gcc and runs this
+      # natively on amd64, so CGO is on here only for -race.
+      - name: Run tests
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+  changelog:
+    name: Changelog extraction
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # The release pipeline pulls its notes out of CHANGELOG.md by matching the
+      # pushed tag. A version whose section extracts empty would publish a
+      # release with no notes, so prove every section extracts here instead.
+      - name: Verify changelog entries are extractable
+        run: |
+          versions=$(grep -oP '^## \Kv\d+\.\d+\.\d+' CHANGELOG.md || true)
+          if [ -z "$versions" ]; then
+            echo "No version entries found in CHANGELOG.md"
+            exit 0
+          fi
+          failed=0
+          for version in $versions; do
+            notes=$(awk "/^## ${version}/ { found=1; next } found && /^## / { exit } found { print }" CHANGELOG.md | awk 'NF{p=1} p')
+            if [ -z "$notes" ]; then
+              echo "FAIL: No content extracted for ${version}"
+              failed=1
+            else
+              echo "OK: ${version} - $(echo "$notes" | wc -l | tr -d ' ') lines"
+            fi
+          done
+          [ "$failed" -eq 0 ]
+
+  image:
+    name: Image build (linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      # Validates the Dockerfile and the static CGO build end to end. amd64 only
+      # (native); arm64 is validated under emulation by the release pipeline.
+      - name: Build image (no push)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          build-args: |
+            VERSION=ci

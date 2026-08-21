@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE_NAME: ghcr.io/runos-official/sessiongate
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          # A semver pre-release suffix (-rc.N, -beta, ...) marks a hidden RC:
+          # published + pinnable by exact version, but never tagged :latest and
+          # flagged a GitHub prerelease so it is excluded from "latest" pointers.
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            echo "prerelease=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: tags
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          tags="${IMAGE_NAME}:${VERSION}"
+          # Only a stable (non-prerelease) build moves the :latest tag.
+          if [ "$PRERELEASE" = "false" ]; then
+            tags="${tags},${IMAGE_NAME}:latest"
+          fi
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+      # Keyless Sigstore build-provenance attestation bound to the image digest
+      # and this workflow's OIDC identity. Verify with:
+      #   gh attestation verify oci://ghcr.io/runos-official/sessiongate:<v> --repo runos-official/sessiongate
+      - name: Attest image provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          NOTES=$(awk "
+            /^## ${VERSION}/ { found=1; next }
+            found && /^## /  { exit }
+            found            { print }
+          " CHANGELOG.md | awk 'NF{p=1} p')
+          if [ -z "$NOTES" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "$NOTES" > release_notes.txt
+          fi
+
+      - name: Create GitHub Release (draft)
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        with:
+          body_path: ${{ steps.notes.outputs.found == 'true' && 'release_notes.txt' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}
+          # A pre-release tag (-rc.N, ...) is flagged a GitHub prerelease so it
+          # is excluded from the repo's "Latest release" pointer. Testers pin the
+          # exact version; normal consumers keep getting the latest stable.
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          draft: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${GITHUB_REF_NAME}" --draft=false
