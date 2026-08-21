@@ -44,6 +44,45 @@ import (
 // Prefix is the first segment, and it is part of the signed bytes.
 const Prefix = "runos_pass_v1"
 
+// MaxTokenBytes bounds a pass before anything expensive touches it.
+//
+// A real pass is a few hundred bytes. The cap exists because the token arrives in a header or a
+// subprotocol value that a client controls the length of, and base64-decoding then Ed25519-verifying
+// a megabyte per request is a cheap amplifier for the caller and an expensive one for the gate.
+const MaxTokenBytes = 4096
+
+// decodeSegment decodes unpadded base64url STRICTLY.
+//
+// base64.RawURLEncoding on its own accepts a final character whose unused low bits are not zero:
+// two different segment strings then decode to the same bytes. That is harmless for THIS design,
+// because the signature covers the segment text rather than the decoded bytes, so a rewritten tail
+// simply fails the signature. It is not harmless for AGREEMENT: conductor's decoder round-trips and
+// refuses the same input as malformed, so without .Strict() the two implementations refuse one input
+// with two different codes, and a client branching on the code sees a different fault depending on
+// which side answered. Strict here, round-trip there, one verdict.
+func decodeSegment(segment string) ([]byte, error) {
+	// THE ALPHABET IS CHECKED BEFORE THE DECODER, and this is not belt and braces.
+	//
+	// MEASURED 2026-08-21, and it survived .Strict(): Go's encoding/base64 IGNORES '\r' and '\n' by
+	// documented design, at every strictness. So "<valid pass>\r\n" decoded to the same bytes,
+	// verified, and was ACCEPTED. Two consequences, both bad. It is a DIFFERENT STRING that opens
+	// the same session, which defeats any replay cache keyed on the token text and any log line an
+	// operator greps for. And conductor refuses it, so the two implementations disagreed about one
+	// input, which is the whole thing the shared vectors exist to prevent.
+	//
+	// Rejecting the character set first removes newline-skipping and anything else the decoder is
+	// lenient about, and it is the same check conductor makes.
+	for i := 0; i < len(segment); i++ {
+		c := segment[i]
+		switch {
+		case c >= 'A' && c <= 'Z', c >= 'a' && c <= 'z', c >= '0' && c <= '9', c == '-', c == '_':
+		default:
+			return nil, errors.New("segment contains a character that is not unpadded base64url")
+		}
+	}
+	return base64.RawURLEncoding.Strict().DecodeString(segment)
+}
+
 // Kind is what sort of session a pass authorizes. The kind is SIGNED, and everything that varies by
 // kind (which target block is present, the lifetime cap, whether it is a websocket at all) derives
 // from it. There is deliberately no separate policy field: a second field saying what the kind
@@ -188,16 +227,21 @@ func Verify(token string, keys Keys, now Now, skew time.Duration) (*Payload, err
 		now = time.Now
 	}
 
+	// SIZE FIRST, before base64 and long before Ed25519. A pass is a few hundred bytes; anything
+	// approaching this is either broken or an attempt to make the gate spend a decode and a
+	// signature check per megabyte of header. The cheapest possible check goes first.
+	if len(token) > MaxTokenBytes {
+		return nil, refuse(ErrMalformed, "a pass is at most %d bytes, this is %d", MaxTokenBytes, len(token))
+	}
+
 	raw, sig, err := split(token)
 	if err != nil {
 		return nil, err
 	}
 
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(raw.payloadSegment)
+	payloadBytes, err := decodeSegment(raw.payloadSegment)
 	if err != nil {
-		// RawURLEncoding refuses '=', '+' and '/' by construction, so a padded or standard-alphabet
-		// pass lands here rather than decoding to something almost right.
-		return nil, refuse(ErrMalformed, "the payload segment is not unpadded base64url")
+		return nil, refuse(ErrMalformed, "the payload segment is not canonical unpadded base64url")
 	}
 
 	p, err := decodePayload(payloadBytes)
@@ -255,9 +299,9 @@ func split(token string) (parts, []byte, error) {
 	if seg[1] == "" || seg[2] == "" {
 		return parts{}, nil, refuse(ErrMalformed, "a pass has no empty segments")
 	}
-	sig, err := base64.RawURLEncoding.DecodeString(seg[2])
+	sig, err := decodeSegment(seg[2])
 	if err != nil {
-		return parts{}, nil, refuse(ErrMalformed, "the signature segment is not unpadded base64url")
+		return parts{}, nil, refuse(ErrMalformed, "the signature segment is not canonical unpadded base64url")
 	}
 	if len(sig) != ed25519.SignatureSize {
 		// Checked before ed25519.Verify, which would return false for a short signature anyway. The

@@ -32,6 +32,13 @@ func TestGoldenVectors(t *testing.T) {
 					t.Fatalf("expected valid, got %v\nwhy this vector exists: %s", err, v.Why)
 				}
 				seenValid[string(p.Kind)] = true
+				// AGREEING ON THE VERDICT IS HALF THE CONTRACT. Two verifiers can both say "valid"
+				// and hand their callers different values: a sub decoded with a replacement
+				// character, a number one side widens, a field one side drops. Compare the decoded
+				// payload field by field against the same expectation conductor compares against.
+				if v.Payload != nil {
+					assertPayloadMatches(t, p, v.Payload)
+				}
 				return
 			}
 			if err == nil {
@@ -214,4 +221,83 @@ func (f vectorFile) harness(t *testing.T) (Keys, Now, time.Duration) {
 func hexPair(i int) string {
 	const hexd = "0123456789abcdef"
 	return string([]byte{hexd[(i/16)%16], hexd[i%16]})
+}
+
+// assertPayloadMatches compares a decoded pass to the vector's expected payload, field by field.
+//
+// Deliberately explicit rather than reflective: a reflective compare would need the two languages
+// to agree about how a struct maps to a JSON object, which is the very thing under test.
+func assertPayloadMatches(t *testing.T, got *Payload, want map[string]any) {
+	t.Helper()
+
+	str := func(key string) string {
+		v, ok := want[key].(string)
+		if !ok {
+			t.Fatalf("vector payload field %q is not a string", key)
+		}
+		return v
+	}
+	num := func(key string) int64 {
+		switch v := want[key].(type) {
+		case float64:
+			return int64(v)
+		case json.Number:
+			n, _ := v.Int64()
+			return n
+		default:
+			t.Fatalf("vector payload field %q is not a number", key)
+			return 0
+		}
+	}
+
+	if int64(got.V) != num("v") {
+		t.Errorf("v: got %d, vector says %d", got.V, num("v"))
+	}
+	for _, f := range []struct {
+		name string
+		got  string
+	}{
+		{"kid", got.KID}, {"jti", got.JTI}, {"aid", got.AID}, {"cid", got.CID},
+		{"sub", got.Sub}, {"kind", string(got.Kind)}, {"org", got.Org},
+	} {
+		if f.got != str(f.name) {
+			t.Errorf("%s: got %q, vector says %q", f.name, f.got, str(f.name))
+		}
+	}
+	if got.IssuedAt().Unix() != num("iat") {
+		t.Errorf("iat: got %d, vector says %d", got.IssuedAt().Unix(), num("iat"))
+	}
+	if got.ExpiresAt().Unix() != num("exp") {
+		t.Errorf("exp: got %d, vector says %d", got.ExpiresAt().Unix(), num("exp"))
+	}
+
+	if wantVM, ok := want["vm"].(map[string]any); ok {
+		if got.VM == nil {
+			t.Fatalf("vector expects a vm target, the pass decoded without one")
+		}
+		if got.VM.Namespace != wantVM["ns"] || got.VM.Name != wantVM["name"] {
+			t.Errorf("vm: got %+v, vector says %+v", *got.VM, wantVM)
+		}
+	} else if got.VM != nil {
+		t.Errorf("the pass decoded a vm target the vector does not expect")
+	}
+
+	if wantWS, ok := want["ws"].(map[string]any); ok {
+		if got.WS == nil {
+			t.Fatalf("vector expects a ws target, the pass decoded without one")
+		}
+		for _, f := range []struct {
+			name string
+			got  string
+		}{
+			{"svc", got.WS.Service}, {"uid", got.WS.UID}, {"user", got.WS.User},
+			{"dir", got.WS.Dir}, {"cmd", got.WS.Cmd},
+		} {
+			if f.got != wantWS[f.name] {
+				t.Errorf("ws.%s: got %q, vector says %v", f.name, f.got, wantWS[f.name])
+			}
+		}
+	} else if got.WS != nil {
+		t.Errorf("the pass decoded a ws target the vector does not expect")
+	}
 }

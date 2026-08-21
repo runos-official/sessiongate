@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,6 +50,14 @@ type vector struct {
 	Why    string `json:"why"`
 	Token  string `json:"token"`
 	Expect string `json:"expect"`
+	// Payload is set on VALID vectors only, and both implementations compare the decoded pass to it
+	// field by field.
+	//
+	// WHY IT IS NOT ENOUGH TO AGREE ON THE VERDICT: two verifiers can both say "valid" and hand
+	// their callers different values. A sub that one side decodes with a replacement character and
+	// the other rejects, a number one side widens, a field one side drops: every one of those is a
+	// green run and a divergence. The verdict is half the contract.
+	Payload map[string]any `json:"payload,omitempty"`
 }
 
 func testKey() (ed25519.PrivateKey, ed25519.PublicKey, string) {
@@ -103,6 +112,9 @@ func TestUpdateVectors(t *testing.T) {
 	add := func(name, why, token, expect string) {
 		vs = append(vs, vector{Name: name, Why: why, Token: token, Expect: expect})
 	}
+	addValid := func(name, why string, p map[string]any) {
+		vs = append(vs, vector{Name: name, Why: why, Token: sign(p), Expect: "valid", Payload: p})
+	}
 
 	// --- valid, one per kind -------------------------------------------------------------------
 	for _, k := range []Kind{KindVMSSH, KindVMSerial, KindVMVNC, KindWSTerminal, KindWSFiles} {
@@ -111,7 +123,7 @@ func TestUpdateVectors(t *testing.T) {
 			// ws.files legitimately carries the longer window.
 			p["exp"] = 1755800300
 		}
-		add("valid-"+string(k), "a well-formed pass of every kind must verify", sign(p), "valid")
+		addValid("valid-"+string(k), "a well-formed pass of every kind must verify, and must DECODE to the same values on both sides", p)
 	}
 
 	// --- structure -----------------------------------------------------------------------------
@@ -125,6 +137,27 @@ func TestUpdateVectors(t *testing.T) {
 		"runos_pass_v1."+base64.URLEncoding.EncodeToString([]byte(`{"v":1}`))+"."+splitSeg(valid, 2), ErrMalformed)
 	add("standard-alphabet-base64", "'+' and '/' are not token characters either",
 		"runos_pass_v1.eyJ2Ijox+w."+splitSeg(valid, 2), ErrMalformed)
+	add("prefix-adjacent-version", "a HasPrefix check without the dot accepts runos_pass_v11 and runos_pass_v10",
+		"runos_pass_v11."+splitSeg(valid, 1)+"."+splitSeg(valid, 2), ErrMalformed)
+	add("prefix-wrong-case", "the prefix comparison is byte exact",
+		"RUNOS_PASS_V1."+splitSeg(valid, 1)+"."+splitSeg(valid, 2), ErrMalformed)
+	add("prefix-homoglyph", "a Cyrillic o in runos, so the comparison cannot be a normalising one",
+		"run\u043es_pass_v1."+splitSeg(valid, 1)+"."+splitSeg(valid, 2), ErrMalformed)
+	add("leading-whitespace", "header and subprotocol plumbing adds whitespace, and trimming silently is how a lenient parser starts",
+		" "+valid, ErrMalformed)
+	add("trailing-whitespace", "the same at the other end", valid+"\r\n", ErrMalformed)
+	add("noncanonical-base64-tail", "Go's RawURLEncoding accepts a non-zero tail and conductor's round-trip does not; without .Strict() the two refuse one input with two codes",
+		"runos_pass_v1."+splitSeg(valid, 1)+"."+nonCanonicalTail(splitSeg(valid, 2)), ErrMalformed)
+	add("oversize-token", "the size cap must fire before base64 and long before Ed25519",
+		func() string {
+			p := basePayload(KindVMSSH)
+			big := make([]byte, 8192)
+			for i := range big {
+				big[i] = 'a'
+			}
+			p["sub"] = string(big)
+			return sign(p)
+		}(), ErrMalformed)
 	add("short-signature", "a truncated signature is a transport fault, named as one",
 		"runos_pass_v1."+splitSeg(valid, 1)+".AAAA", ErrMalformed)
 	add("bad-signature", "a flipped signature byte must not verify",
@@ -190,8 +223,12 @@ func TestUpdateVectors(t *testing.T) {
 		sign(withKey(basePayload(KindVMSSH), "exp", 1755886400)), ErrLifetime)
 	add("ws-files-lifetime-over-cap", "and ws.files 300, not more",
 		sign(withKey(basePayload(KindWSFiles), "exp", 1755800600)), ErrLifetime)
-	add("clock-skew-tolerated", "a pass a few seconds stale still opens, or a fast cluster clock breaks every session",
-		sign(withKey(withKey(basePayload(KindVMSSH), "iat", 1755799965), "exp", 1755800025)), "valid")
+	addValid("clock-skew-tolerated", "a pass a few seconds stale still opens, or a fast cluster clock breaks every session",
+		withKey(withKey(basePayload(KindVMSSH), "iat", 1755799965), "exp", 1755800025))
+	addValid("lifetime-exactly-at-cap", "the cap is inclusive; an off-by-one here silently shortens every pass",
+		withKey(basePayload(KindVMSSH), "exp", 1755800060))
+	addValid("expires-in-one-second", "the lower edge of the accept window",
+		withKey(withKey(basePayload(KindVMSSH), "iat", 1755799971), "exp", 1755800031))
 
 	// --- target confusion ------------------------------------------------------------------------
 	add("both-targets", "the interesting version rides a vm block on a ws kind",
@@ -297,6 +334,24 @@ func splitSeg(token string, i int) string {
 		return token[start:]
 	}
 	return ""
+}
+
+// nonCanonicalTail rewrites the final base64url character to one sharing its high bits, so the
+// segment decodes to the SAME bytes under a lenient decoder and is refused by a strict one.
+func nonCanonicalTail(seg string) string {
+	if seg == "" {
+		return seg
+	}
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+	last := seg[len(seg)-1]
+	idx := strings.IndexByte(alphabet, last)
+	if idx < 0 {
+		return seg
+	}
+	// Ed25519 signatures are 64 bytes, so the segment is 86 characters and the final character
+	// carries 4 significant bits and 2 unused ones. Adding 1 sets an unused bit without changing the
+	// decoded bytes.
+	return seg[:len(seg)-1] + string(alphabet[(idx+1)%64])
 }
 
 func flipLast(seg string) string {
