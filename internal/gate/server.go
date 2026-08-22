@@ -400,6 +400,29 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	/*
+	 * THE FILE DOOR HAS A CEILING TOO, and it did not before.
+	 *
+	 * A ws.files pass is deliberately REPLAYABLE and lives five minutes, because a file browser
+	 * makes many requests over a minute or two of somebody clicking about. That is the right call
+	 * for the credential and the wrong one for an unbounded door: one such pass drove 60 concurrent
+	 * proxied requests with zero refused, each pinnable for the five-minute files.Timeout, while
+	 * Live() read 0 because this path never touched the session counters at all.
+	 *
+	 * Counted against the SAME in-flight bound as the websocket door, so the two cannot be used to
+	 * exhaust the pod independently of one another. HTTP 503 rather than a close code, because a
+	 * client here can read a body and a retry is the honest instruction.
+	 */
+	if n := s.inFlight.Add(1); n > s.maxInFlight() {
+		s.inFlight.Add(-1)
+		w.Header().Set("Retry-After", "1")
+		http.Error(w, "this gate is busy, try again shortly", http.StatusServiceUnavailable)
+		s.Log.Warn("file request refused: too many handlers in flight",
+			"inFlight", n-1, "remote", clientIP(r))
+		return
+	}
+	defer s.inFlight.Add(-1)
+
 	token, err := files.BearerToken(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Bearer")

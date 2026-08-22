@@ -7,6 +7,29 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The release pipeline extracts the section matching the pushed tag (`## vX.Y.Z`)
 as the GitHub release notes, so every released version needs a section here.
 
+## v0.1.0-rc.3
+
+Four defects an adversarial audit of the rc.2 image found, two of them reachable by an
+unauthenticated caller.
+
+- **One badly-named VM could kill the gate.** The port-22 guard asked whether the dial URL
+  contained the word "portforward" anywhere, and the VM NAME is interpolated into that URL. A
+  machine called `portforward-test` therefore panicked every serial and VNC session on it. The
+  guard now branches on the session KIND and matches the whole trailing path segment, so a name
+  cannot trip it. The pin itself is unchanged: vm.ssh reaches port 22 or nothing does.
+- **A panic leaked its socket.** The pin panics on purpose, but nothing recovered it, and
+  net/http cannot close a websocket it has already handed away. Every panic left a socket in
+  CLOSE_WAIT until the pod died and took every live session with it. The handler now recovers and
+  closes the connection.
+- **Refusals were unbounded.** The live counter was incremented after the refusal branch, so the
+  session ceilings bounded accepted sessions and nothing else, while each refusal held a goroutine
+  and socket for the five-second close handshake. Every handler past the handshake is now counted,
+  refusals and file requests alike.
+- **A case-variant duplicate key verified here and nowhere else.** Go matches struct tags
+  case-insensitively, so `{"kind":"ws.files","KIND":"vm.ssh"}` passed both the unknown-field check
+  and the duplicate check, and the gate decoded a different value than either TypeScript verifier.
+  Duplicates are now compared case-folded, with two golden vectors covering it.
+
 ## v0.1.0-rc.2
 
 **rc.1 could not open a workspace terminal, and this is the fix.** The gate verified the pass, then
