@@ -5,9 +5,11 @@ interactive session against their own workload: a virtual machine's serial
 console or screen, an SSH session to a virtual machine, or a workspace
 terminal. One instance runs per RunOS cluster.
 
-> **Status: skeleton.** This version builds, stamps its version and exits. No
-> session handling exists yet. It is published to prove the release pipeline
-> and the image before the implementation lands.
+> **Status: implemented and running.** The gate verifies a session pass locally,
+> burns it once, dials the far end and pipes bytes, for all four session kinds.
+> It is deployed on RunOS dev and has been proven on hardware: SSH into a
+> virtual machine, its serial console, a VNC framebuffer over 1 MiB, and a
+> workspace terminal from both the CLI and the browser.
 
 ## Why it exists
 

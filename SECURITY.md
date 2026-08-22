@@ -18,10 +18,14 @@ mitigation plan within 3 days for critical issues.
 
 ## Security Practices
 
-> **This version is a skeleton.** It builds, prints its version and exits. The
-> practices below are the rules the implementation must keep, published here
-> first so that a later change that erodes one is visible as a change of policy
-> rather than an unremarked detail.
+> **These practices are implemented, not aspirational.** The gate below verifies
+> passes, enforces the port-22 pin, burns each pass once and fails closed on every
+> fault. The list is kept here so that a later change that erodes one is visible as
+> a change of policy rather than an unremarked detail.
+>
+> Reviewing this repository does not show you the whole system. The gate holds only
+> PUBLIC keys; the private half never leaves the RunOS control plane, and the
+> workspace it fronts performs its own check on the forwarded pass.
 
 - **No hardcoded secrets.** The repository contains no credentials, tokens, or
   private keys, and none are baked into the image. The gate reads what it needs
