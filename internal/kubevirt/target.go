@@ -117,15 +117,44 @@ func (t Target) URL(apiHost string) string {
 // works perfectly and looks like a working feature. The caller recovers at the session boundary, so
 // this kills one session loudly instead of the pod.
 func AssertSSHPortPinned(kind pass.Kind, dialURL string) {
-	if !strings.Contains(dialURL, "portforward") {
+	want := fmt.Sprintf("/portforward/%d/tcp", SSHPort)
+
+	/*
+	 * DECIDED BY KIND, NOT BY SEARCHING THE URL FOR A WORD.
+	 *
+	 * The first version asked `strings.Contains(dialURL, "portforward")`, and the VM NAME is
+	 * interpolated into that same URL. So a customer who names a machine "portforward-test" made
+	 * every serial and VNC session on it take the panic branch: the URL contained the word, the
+	 * kind was not vm.ssh, and the guard fired on a session that was never a port-forward at all.
+	 * Combined with a panic that leaked its hijacked socket, one badly-named VM was a denial of
+	 * service against the whole cluster, reachable by its owner at no cost.
+	 *
+	 * The kind is the fact the URL is built FROM, so it is the fact to branch on. The suffix check
+	 * then still reads the bytes actually going out, which is the point of doing this here.
+	 */
+	if kind == pass.KindVMSSH {
+		if !strings.HasSuffix(dialURL, want) {
+			panic(fmt.Sprintf(
+				"session gate refuses to dial %q for kind %s: a port-forward session may only ever reach %s. "+
+					"This is the only limit that exists, because kube-apiserver drops the port segment "+
+					"before the access review and RBAC cannot restrict it.",
+				dialURL, kind, want))
+		}
 		return
 	}
-	want := fmt.Sprintf("/portforward/%d/tcp", SSHPort)
-	if kind != pass.KindVMSSH || !strings.HasSuffix(dialURL, want) {
+
+	/*
+	 * Any OTHER kind must not be dialling a port-forward at all. Matched on the whole trailing
+	 * segment triple, so a VM merely NAMED "portforward" cannot trip it: the name is
+	 * url.PathEscape'd, so its slashes are %2F and it can never contribute "/portforward/x/y" to
+	 * the end of the path.
+	 */
+	if portForwardTail.MatchString(dialURL) {
 		panic(fmt.Sprintf(
-			"session gate refuses to dial %q for kind %s: a port-forward session may only ever reach %s. "+
-				"This is the only limit that exists, because kube-apiserver drops the port segment "+
-				"before the access review and RBAC cannot restrict it.",
+			"session gate refuses to dial %q for kind %s: only vm.ssh may open a port-forward, and only to %s.",
 			dialURL, kind, want))
 	}
 }
+
+// The trailing "/portforward/<port>/<protocol>" of a KubeVirt port-forward subresource.
+var portForwardTail = regexp.MustCompile(`/portforward/[^/]+/[^/]+$`)

@@ -383,10 +383,26 @@ func walkObject(dec *json.Decoder) error {
 		if !ok {
 			return refuse(ErrPayload, "the payload is not valid JSON")
 		}
-		if seen[key] {
+		/*
+		 * COMPARED CASE-FOLDED, and that is not tidiness. Go's encoding/json matches struct tags
+		 * CASE-INSENSITIVELY, so `{"kind":"ws.files","KIND":"vm.ssh"}` sails past
+		 * DisallowUnknownFields (KIND is a known field) and, keyed on the exact string, past this
+		 * check too (KIND != kind). The last one wins, so the gate decoded vm.ssh from a payload
+		 * whose first kind said ws.files.
+		 *
+		 * Both TypeScript verifiers refuse the same token outright, because they test membership of
+		 * an exact-string field set. That is a three-way DISAGREEMENT on the only authorization
+		 * boundary there is, in the permissive direction, on the implementation that decides. The
+		 * file's own header calls these vectors "the CONTRACT between the two implementations";
+		 * folding the case here is what makes that true for the case-variant half.
+		 *
+		 * Every field name in a pass is lowercase, so nothing legitimate collides.
+		 */
+		folded := strings.ToLower(key)
+		if seen[folded] {
 			return refuse(ErrPayload, "the payload names %q more than once", safeEcho(key))
 		}
-		seen[key] = true
+		seen[folded] = true
 		if err := walkValue(dec); err != nil {
 			return err
 		}

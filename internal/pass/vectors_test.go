@@ -189,6 +189,10 @@ func TestUpdateVectors(t *testing.T) {
 		signRawJSON(`{"v":1,"kid":"a1b2c3d4e5f60718","jti":"0123456789abcdef0123456789abcdef","iat":1755800000,"exp":1755800060,"aid":"rjwrn","cid":"v6b","sub":"u1","kind":"vm.ssh","org":"https://console.runos.com","vm":{"ns":"vmgroup-a1b2c","name":"vm-abcde","port":2222}}`), ErrPayload)
 	add("duplicate-key", "two parsers may keep different values for a duplicated key; refuse the shape",
 		signRawJSON(`{"v":1,"kid":"a1b2c3d4e5f60718","jti":"0123456789abcdef0123456789abcdef","iat":1755800000,"exp":1755800060,"aid":"rjwrn","cid":"v6b","sub":"u1","kind":"ws.files","kind":"vm.ssh","org":"https://console.runos.com","vm":{"ns":"vmgroup-a1b2c","name":"vm-abcde"}}`), ErrPayload)
+	add("duplicate-key-case-variant", "Go matches struct tags case-insensitively, so KIND is a known field and the exact-string duplicate check never saw the pair; the gate decoded vm.ssh from a body whose first kind said ws.files, while both TypeScript verifiers refused it",
+		signRawJSON(`{"v":1,"kid":"a1b2c3d4e5f60718","jti":"0123456789abcdef0123456789abcdef","iat":1755800000,"exp":1755800060,"aid":"rjwrn","cid":"v6b","sub":"u1","kind":"ws.files","KIND":"vm.ssh","org":"https://console.runos.com","vm":{"ns":"vmgroup-a1b2c","name":"vm-abcde"}}`), ErrPayload)
+	add("duplicate-key-case-variant-target", "the same trick aimed at the target block, which is the one that decides which machine is reached",
+		signRawJSON(`{"v":1,"kid":"a1b2c3d4e5f60718","jti":"0123456789abcdef0123456789abcdef","iat":1755800000,"exp":1755800060,"aid":"rjwrn","cid":"v6b","sub":"u1","kind":"vm.ssh","org":"https://console.runos.com","vm":{"ns":"vmgroup-a1b2c","name":"vm-abcde"},"VM":{"ns":"vmgroup-zzzzz","name":"vm-victim"}}`), ErrPayload)
 	add("missing-field", "every field is required",
 		signRawJSON(`{"v":1,"kid":"a1b2c3d4e5f60718","jti":"0123456789abcdef0123456789abcdef","iat":1755800000,"exp":1755800060,"aid":"rjwrn","cid":"v6b","kind":"vm.ssh","org":"https://console.runos.com","vm":{"ns":"vmgroup-a1b2c","name":"vm-abcde"}}`), ErrPayload)
 	add("wrong-version", "a version 2 body under a v1 prefix", sign(withKey(basePayload(KindVMSSH), "v", 2)), ErrPayload)

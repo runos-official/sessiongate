@@ -273,6 +273,18 @@
       "expect": "pass_payload"
     },
     {
+      "name": "duplicate-key-case-variant",
+      "why": "Go matches struct tags case-insensitively, so KIND is a known field and the exact-string duplicate check never saw the pair; the gate decoded vm.ssh from a body whose first kind said ws.files, while both TypeScript verifiers refused it",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ3cy5maWxlcyIsIktJTkQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwidm0iOnsibnMiOiJ2bWdyb3VwLWExYjJjIiwibmFtZSI6InZtLWFiY2RlIn19.d5-zu6h78ZAdcpmo7-eegAuSugqZYDORCPfvOi-pgHIicdpNYcgf_IZUjcDvxxT9G543CpKextWYwnbN6rkJBg",
+      "expect": "pass_payload"
+    },
+    {
+      "name": "duplicate-key-case-variant-target",
+      "why": "the same trick aimed at the target block, which is the one that decides which machine is reached",
+      "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJzdWIiOiJ1MSIsImtpbmQiOiJ2bS5zc2giLCJvcmciOiJodHRwczovL2NvbnNvbGUucnVub3MuY29tIiwidm0iOnsibnMiOiJ2bWdyb3VwLWExYjJjIiwibmFtZSI6InZtLWFiY2RlIn0sIlZNIjp7Im5zIjoidm1ncm91cC16enp6eiIsIm5hbWUiOiJ2bS12aWN0aW0ifX0.LBpeoigDDUhIlnbGGNM122CaPkxzpjhI6NfrpCMte3GzA575s3OHCKp4XWR42iFwqJgb3JAVLR9F09xmA-CXBg",
+      "expect": "pass_payload"
+    },
+    {
       "name": "missing-field",
       "why": "every field is required",
       "token": "runos_pass_v1.eyJ2IjoxLCJraWQiOiJhMWIyYzNkNGU1ZjYwNzE4IiwianRpIjoiMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJpYXQiOjE3NTU4MDAwMDAsImV4cCI6MTc1NTgwMDA2MCwiYWlkIjoicmp3cm4iLCJjaWQiOiJ2NmIiLCJraW5kIjoidm0uc3NoIiwib3JnIjoiaHR0cHM6Ly9jb25zb2xlLnJ1bm9zLmNvbSIsInZtIjp7Im5zIjoidm1ncm91cC1hMWIyYyIsIm5hbWUiOiJ2bS1hYmNkZSJ9fQ.ryfNlujKGHe5RSsthYdE0NXdrT1mhzLsjlCKIzg7afrlEIfHnq4tl8lLlbNP5RuQH3DpCFg3l_32A3Hu_lhuCQ",

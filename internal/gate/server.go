@@ -55,6 +55,22 @@ type Server struct {
 	MaxSessionAge time.Duration
 	live          atomic.Int32
 	draining      atomic.Bool
+	/*
+	 * inFlight counts EVERY handler past the handshake, including the ones about to refuse.
+	 *
+	 * MEASURED, and this is the hole it closes. `live` is incremented AFTER the refusal branch, so
+	 * MaxSessions and MaxPerSubject bounded accepted sessions and nothing else: 40 refusals were
+	 * held in flight at once while Live() read 0. A refusal is not free. It completes the upgrade
+	 * and then closes with a code, and coder/websocket's Close writes the close frame and WAITS UP
+	 * TO FIVE SECONDS for a peer close frame that a hostile client simply never sends. So an
+	 * unauthenticated caller with a garbage pass could pin a goroutine and a socket per attempt,
+	 * for five seconds each, with no credential and no ceiling.
+	 *
+	 * Counting the refusals is the fix, not making them cheaper: the close code is the whole reason
+	 * a browser can tell an expired pass from a dead cluster, and dropping it to save work would
+	 * trade a denial-of-service for a diagnosability one.
+	 */
+	inFlight atomic.Int32
 
 	// open is every live session, so a shutdown can END them rather than let the process exit from
 	// under them. See CloseAll.
@@ -146,6 +162,22 @@ func (s *Server) CloseAll(code int, reason string) int {
 	return len(conns)
 }
 
+/*
+maxInFlight bounds handlers past the handshake, refusals included.
+
+FOUR TIMES MaxSessions, not equal to it. The bound exists to stop an unauthenticated flood, not to
+second-guess the session ceiling, and a legitimate burst can briefly hold more handlers than
+sessions: a client that reconnects every session at once passes through here twice, once to be
+refused for a spent pass and once to succeed. Sizing it to MaxSessions would turn that burst into a
+self-inflicted outage, which is the failure this whole file is written to avoid.
+*/
+func (s *Server) maxInFlight() int32 {
+	if s.MaxSessions <= 0 {
+		return 0 // no ceiling configured means no ceiling here either
+	}
+	return s.MaxSessions * 4
+}
+
 // addForSubject changes one subject's live count and returns the new value.
 func (s *Server) addForSubject(sub string, delta int32) int32 {
 	s.openMu.Lock()
@@ -221,6 +253,43 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 		s.Log.Warn("handshake failed", "error", err, "remote", clientIP(r))
 		return
 	}
+
+	/*
+	 * A HIJACKED CONNECTION IS NOT CLOSED BY net/http's PANIC RECOVERY, so this defer is the only
+	 * thing standing between one panic and a leaked socket.
+	 *
+	 * The port-22 pin panics on purpose, to kill one session loudly rather than let a tunnel to the
+	 * wrong port look like a working feature. Its comment claimed "the caller recovers at the
+	 * session boundary"; no recover existed anywhere in this package. net/http recovers the panic
+	 * and keeps the process up, but it cannot close a connection it has already handed away, so
+	 * every panic left a socket in CLOSE_WAIT and an fd behind it. MEASURED: 30 attempts leaked 30
+	 * sockets and 60 fds, and the pod dies eventually, taking every live session on the cluster.
+	 */
+	defer func() {
+		if rec := recover(); rec != nil {
+			s.Log.Error("session handler panicked", "panic", rec, "remote", clientIP(r))
+			// Tell the client something it can act on, then make sure the fd goes back regardless.
+			_ = conn.Close(websocket.StatusInternalError, "the session ended unexpectedly")
+			_ = conn.CloseNow()
+		}
+	}()
+
+	/*
+	 * EVERY handler past the handshake is counted, refusals included. See inFlight.
+	 *
+	 * Over the ceiling the connection is dropped with CloseNow, which sends no close frame and
+	 * waits for nothing. That is a deliberate downgrade: a caller who has already pushed the gate
+	 * past its in-flight bound has forfeited the courtesy of a diagnosable refusal, and the
+	 * alternative is letting them buy five seconds of a goroutine for the price of one packet.
+	 */
+	if n := s.inFlight.Add(1); n > s.maxInFlight() {
+		s.inFlight.Add(-1)
+		_ = conn.CloseNow()
+		s.Log.Warn("dropped without a close frame: too many handlers in flight",
+			"inFlight", n-1, "remote", clientIP(r))
+		return
+	}
+	defer s.inFlight.Add(-1)
 
 	if !decision.Allow {
 		s.closeWith(conn, decision)
