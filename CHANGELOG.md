@@ -7,6 +7,64 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The release pipeline extracts the section matching the pushed tag (`## vX.Y.Z`)
 as the GitHub release notes, so every released version needs a section here.
 
+## v0.1.0
+
+First stable release. It finalizes the v0.1.0 line (rc.1 through rc.3) and carries no code change
+over rc.3: this is the same commit, released.
+
+The session gate brokers interactive sessions inside a customer's own cluster. A browser or a CLI
+presents a short-lived pass, the gate verifies it locally, burns it once, dials the far end and
+pipes the bytes. The RunOS API is never in the path of a session.
+
+### The pass
+
+- Ed25519 over the transmitted bytes, unpadded base64url, no algorithm field and no JWT library. 67
+  golden vectors are shared with conductor's verifier, and both must agree on every verdict and on
+  the decoded payload.
+- Single use, enforced by a named Lease create, which is a compare-and-set in etcd. It fails closed
+  on every claim fault, never deletes on a failure path, and reaps its own spent leases because
+  Kubernetes does not collect them.
+- Every refusal shares one client message, so the gate is not an oracle for a prober.
+- The verifier is fuzzed, because it is the first thing an unauthenticated client reaches. 47
+  million executions, zero panics, and the invariant that it never returns both a payload and an
+  error.
+- Duplicate keys are compared case-folded, because Go matches struct tags case-insensitively and a
+  case-variant duplicate would otherwise decode differently here than in the TypeScript verifier.
+
+### The port-22 pin
+
+- `vm.ssh` reaches port 22 on the guest or nothing does. `/portforward/22/tcp` and
+  `/portforward/2222/tcp` authorize identically, because kube-apiserver drops the port segment
+  before the access review, so the literal is the only limit that exists. Five layers defend it,
+  including a fuzz test that never names the constant.
+- The guard branches on the session kind and matches the whole trailing path segment, so a machine
+  name cannot trip it.
+
+### Sessions
+
+- A workspace terminal forwards the pass to the workspace, which verifies it again. The workspace is
+  the only party that knows whose workspace it is, so it is the only one that can check the pass was
+  minted for that workspace.
+- A session ends with a close frame rather than a dropped socket, so a client can tell a clean
+  ending from a broken one.
+- A gate that is shutting down closes surviving sessions with a reason, so the CLI and the console
+  can both say "restarting, try again".
+- Every handler past the handshake is counted, refusals and file requests alike, so the session
+  ceilings bound the whole surface rather than accepted sessions only.
+- A panic is recovered and its connection closed, so a deliberate refusal cannot leak a socket.
+
+### Startup
+
+- Startup refuses an unsafe configuration rather than running: no keys, no origins, a truncated key,
+  a lease retention shorter than a pass can live, or any attempt to disable single use.
+
+### Build
+
+- Distroless and non-root (uid 65532), built for linux/amd64 and linux/arm64.
+- Keyless Sigstore build-provenance attestation bound to the image digest and pushed to the
+  registry. Verify with
+  `gh attestation verify oci://ghcr.io/runos-official/sessiongate:0.1.0 --repo runos-official/sessiongate`.
+
 ## v0.1.0-rc.3
 
 Four defects an adversarial audit of the rc.2 image found, two of them reachable by an
