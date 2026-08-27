@@ -66,7 +66,7 @@ jobs:
           fi
           failed=0
           for version in $versions; do
-            notes=$(awk "/^## ${version}/ { found=1; next } found && /^## / { exit } found { print }" CHANGELOG.md | awk 'NF{p=1} p')
+            notes=$(awk "/^## ${version}$/ { found=1; next } found && /^## / { exit } found { print }" CHANGELOG.md | awk 'NF{p=1} p')
             if [ -z "$notes" ]; then
               echo "FAIL: No content extracted for ${version}"
               failed=1

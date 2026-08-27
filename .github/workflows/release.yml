@@ -85,7 +85,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME}"
           NOTES=$(awk "
-            /^## ${VERSION}/ { found=1; next }
+            /^## ${VERSION}$/ { found=1; next }
             found && /^## /  { exit }
             found            { print }
           " CHANGELOG.md | awk 'NF{p=1} p')
