@@ -7,6 +7,12 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The release pipeline extracts the section matching the pushed tag (`## vX.Y.Z`)
 as the GitHub release notes, so every released version needs a section here.
 
+## Unreleased
+
+### Security
+
+- The gate builds with Go 1.26.10 instead of Go 1.25.5 (FCR 1654). The v0.1.0 image carried a binary built with go1.25.5, a line without security fixes. go.mod gains a toolchain line and the build image moves to golang:1.26.10-alpine3.23, pinned by digest. 1.26.10 carries the standard-library fixes, including the HTTP/2 SETTINGS denial of service (CVE-2026-78669). govulncheck: 26 standard-library findings before, none after.
+
 ## v0.1.0
 
 First stable release. It finalizes the v0.1.0 line (rc.1 through rc.3) and carries no code change
