@@ -56,6 +56,7 @@ steps:
     description: "scripts/release.sh --check: preflight (tag free, CHANGELOG section, clean tree, branch in sync, CI green on the commit), the sensitivity scan, the leak and scannability gates, gofmt, build, vet and the race tests. Every gate, no side effects, and it cannot be skipped."
     run: scripts/release.sh "${{ version }}" --check
     timeout: 1800
+    slow: true
 
   - name: Tag and push
     description: Tags the integration branch and pushes both. The record is not touched here; the last step moves it once the release is verified.
