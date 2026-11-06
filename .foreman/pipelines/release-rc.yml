@@ -1,0 +1,83 @@
+# The RunOS Session Gate release candidate pipeline, run by foreman on the foreman HOST.
+#
+# This repo is PUBLIC and its image is built by GitHub Actions (release.yml), not
+# here, so the public sees the same process that foreman shows. Foreman runs the
+# repo's own gate script in check mode, tags and pushes, WATCHES the workflow the
+# tag started, verifies what it published, and records the release on the
+# `deployed` branch.
+#
+# The gate chain is NOT reimplemented here, on purpose: scripts/release.sh carries
+# the leak gate of a public repo, and a second copy would be the one that drifts.
+# Step two calls its --check mode, which runs every gate and stops before any side
+# effect.
+#
+# The result is a hidden candidate. It is a GitHub pre-release, its image never
+# moves the :latest tag, and nothing advertises it. A tester pins it by exact
+# version.
+#
+# gh authenticates from the host keyring, so no credential is injected here.
+#
+# scripts/deploy/check-pipelines.py loads every file in this folder against the
+# schema foreman validates them with.
+
+name: Release a hidden RC of the RunOS Session Gate
+description: Run this repo's full gate chain, tag and push, watch the GitHub Actions release, verify the image and its attestation, and record the release.
+kind: github_release
+
+steps:
+  - name: Hidden release candidate only
+    description: "Refuse a stable version and a wrong target before any gate or tag. A candidate takes a dev target that integrates on dev and records on deployed, which is all scripts/release.sh uses."
+    run: |
+      version="${{ version }}"
+      printf '%s' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$' || { echo "use an explicit vX.Y.Z-rc.N version, got $version"; exit 1; }
+      test "${{ target.env }}" = "dev" || { echo "a release candidate goes to a dev target, got env ${{ target.env }}"; exit 1; }
+      test "${{ target.branch }}" = "dev" || { echo "this target integrates on ${{ target.branch }}, but scripts/release.sh releases only from dev"; exit 1; }
+      test "${{ target.deployed_branch }}" = "deployed" || { echo "this target records on ${{ target.deployed_branch }}, but only the branch deployed is advanced"; exit 1; }
+      echo "$version on a dev target"
+    timeout: 60
+
+  - name: Gate chain
+    description: "scripts/release.sh --check: preflight (tag free, CHANGELOG section, clean tree, branch in sync, CI green on the commit), the sensitivity scan, the leak and scannability gates, gofmt, build, vet and the race tests. Every gate, no side effects, and it cannot be skipped."
+    run: scripts/release.sh "${{ version }}" --check
+    timeout: 1800
+
+  - name: Tag and push
+    description: Tags the integration branch and pushes both. main is never touched here; the human merges it after their own verification.
+    run: |
+      git checkout --quiet ${{ target.branch }}
+      sha="$(git rev-parse --short HEAD)"
+      git tag "${{ version }}"
+      git push --quiet origin ${{ target.branch }}
+      git push --quiet origin "${{ version }}"
+      echo "tagged ${{ version }} at $sha and pushed"
+
+  - name: Wait for the release workflow
+    description: GitHub builds the image. Find the run this tag started, print its address, then block on it. A failed workflow fails the deploy.
+    run: scripts/deploy/watch-release.sh "${{ version }}"
+    timeout: 1800
+    expect: [run_id, workflow_run_url, conclusion, jobs]
+    observe: workflow_run_url is the run the public sees in GitHub Actions. conclusion must be success; jobs lists each job with its own conclusion.
+
+  - name: Verify the published release
+    description: Proves the release page, the image and its platforms exist, and that the attestation was signed by THIS workflow at THIS tag for the commit the tag names.
+    run: scripts/deploy/verify-release.sh "${{ version }}"
+    timeout: 300
+    expect: [image, digest, platforms, attestation, attested_commit]
+    observe: digest is the image to pin. platforms must list linux/amd64 and linux/arm64. attested_commit must be the tagged commit.
+
+  - name: Advance the deployed branch
+    description: The record of what has actually shipped. Fast-forwarded only now, on success. main stays clean for the human.
+    run: |
+      # The record ref comes from the target: an objective-scoped deploy records
+      # on its own rc ref, never on the shared one, so the literal name is refused.
+      record="${{ target.deployed_branch }}"
+      git branch -f "$record" ${{ target.branch }}
+      git push --quiet origin "$record"
+      echo "$record now at $(git rev-parse --short "$record")"
+
+  # Read-only, runs even after a failure or a cancel, prints data and no verdict. The agent decides.
+  - name: Collect evidence
+    description: "Read-only. The tag and its commit, the workflow run with every job and step, the failed log tail, the release page, the image digest and platforms, the attestation. Prints data only."
+    always: true
+    timeout: 120
+    run: scripts/deploy/release-evidence.sh "${{ version }}" "${{ run_dir }}/evidence.txt"
