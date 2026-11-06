@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -59,7 +59,9 @@ jobs:
       # release with no notes, so prove every section extracts here instead.
       - name: Verify changelog entries are extractable
         run: |
-          versions=$(grep -oP '^## \Kv\d+\.\d+\.\d+' CHANGELOG.md || true)
+          # The pre-release suffix is part of the heading: release.yml anchors the match
+          # on the whole tag, so an rc section is its own entry.
+          versions=$(grep -oP '^## \Kv\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?' CHANGELOG.md || true)
           if [ -z "$versions" ]; then
             echo "No version entries found in CHANGELOG.md"
             exit 0
