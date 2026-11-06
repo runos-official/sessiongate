@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# RunOS pre-push hook: stop a push that would publish internal identifiers or
+# credentials from this PUBLIC repo. This file is IDENTICAL in every public RunOS repo.
+#
+# It scans the lines this push ADDS (every commit that is not already on the remote
+# branch), with the same checker as the pre-commit hook, and it runs the scannability
+# gate first. Where pre-commit sees only the staged diff, this sees the commits
+# that will actually leave the machine, including ones made with `git commit --no-verify`
+# or by another tool.
+#
+# It is TRACKED, because .git/hooks is not. Install it once per clone with:
+#
+#     make hooks          (or: git config core.hooksPath .githooks)
+#
+# A fresh clone has core.hooksPath unset, so it has no hook until somebody runs that.
+# The Leak gate workflow on GitHub (every push and pull request) and scripts/release.sh
+# are the run points that cannot be skipped; this one is the only one that runs BEFORE
+# the push, so a leak never reaches GitHub at all.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+CHECKER="$REPO_ROOT/scripts/leakcheck.py"
+UNSCANNABLE="$REPO_ROOT/scripts/unscannable_check.py"
+ZERO="0000000000000000000000000000000000000000"
+EMPTY_TREE="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+[[ -f "$CHECKER" ]] || exit 0
+
+if ! command -v python3 >/dev/null 2>&1; then
+  printf '\033[0;33m  !\033[0m pre-push: python3 not found, leakcheck skipped. The Leak gate workflow still runs it.\n' >&2
+  exit 0
+fi
+
+# 1. A tracked file leakcheck cannot read is a hole, so it blocks the push.
+if [[ -f "$UNSCANNABLE" ]]; then
+  if ! OUTPUT="$(cd "$REPO_ROOT" && python3 "$UNSCANNABLE" 2>&1)"; then
+    printf '%s\n' "$OUTPUT" >&2
+    printf '\n  PUSH BLOCKED: a tracked file is one leakcheck cannot read.\n\n' >&2
+    exit 1
+  fi
+fi
+
+# 2. The lines each pushed ref adds.
+FAILED=0
+while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+  [[ -n "${LOCAL_SHA:-}" ]] || continue
+  [[ "$LOCAL_SHA" != "$ZERO" ]] || continue            # a branch deletion adds nothing
+  if [[ "$REMOTE_SHA" != "$ZERO" ]]; then
+    BASE="$REMOTE_SHA"
+  else
+    # A new branch: everything that is not already on some remote branch.
+    BASE=""
+    for cand in origin/HEAD origin/main origin/dev; do
+      if git rev-parse -q --verify "$cand" >/dev/null 2>&1; then
+        BASE="$(git merge-base "$LOCAL_SHA" "$cand" 2>/dev/null || true)"
+        [[ -n "$BASE" ]] && break
+      fi
+    done
+    [[ -n "$BASE" ]] || BASE="$EMPTY_TREE"
+  fi
+  # A remote sha this clone does not hold (someone else pushed) cannot be diffed: scan the whole ref.
+  git cat-file -e "$BASE^{object}" 2>/dev/null || BASE="$EMPTY_TREE"
+  if ! OUTPUT="$(cd "$REPO_ROOT" && python3 "$CHECKER" --range "$BASE..$LOCAL_SHA" 2>&1)"; then
+    printf 'leakcheck found a problem in what %s would publish (%s):\n%s\n' "$LOCAL_REF" "${BASE:0:12}..${LOCAL_SHA:0:12}" "$OUTPUT" >&2
+    FAILED=1
+  fi
+done
+
+if [[ "$FAILED" -ne 0 ]]; then
+  cat >&2 <<'MSG'
+
+  --------------------------------------------------------------------------
+  PUSH BLOCKED by leakcheck. This is a PUBLIC repo.
+
+  Fix the lines above and amend or add a commit. Do not hand-add them to
+  scripts/leakcheck.baseline: that file records leaks that already shipped,
+  it is not a way through.
+
+  In a real emergency, and only then, skip this hook the normal git way:
+
+      git push --no-verify
+
+  Skipping does NOT get the change onto GitHub clean. The Leak gate workflow
+  runs the same checker over the whole tree on every push and every pull
+  request, and scripts/release.sh runs it again. Neither can be skipped.
+  --------------------------------------------------------------------------
+
+MSG
+  exit 1
+fi
+exit 0
