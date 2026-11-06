@@ -38,9 +38,14 @@ PLACEHOLDER = re.compile(r"\$\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}")
 BARE = {"version", "repo", "ref", "branch", "fast", "rollback_to", "run_dir"}
 # The target config keys these pipelines are allowed to read. The target row must define each.
 TARGET_KEYS = {"env", "branch", "deployed_branch"}
-# The shared record branches. A command that names one literally defeats the objective-scoped
-# rewrite of ${{ target.deployed_branch }}, which Foreman refuses.
-RECORD_BRANCHES = ("deployed/dev", "deployed/prod")
+# The record branches. A step command that names one literally defeats the objective-scoped
+# rewrite of ${{ target.deployed_branch }}, which Foreman refuses. `main` is the prod record: a
+# pipeline step reaches it only through ${{ target.deployed_branch }}, and the literal lives in
+# scripts/deploy/record-release.sh, which moves it for a final on a prod target and for nothing else.
+RECORD_BRANCHES = ("deployed/dev", "main")
+# A branch that no longer records anything. The name is spelled in two halves so that this file
+# does not trip its own scan. It may not appear in any pipeline, any script or any test.
+RETIRED_BRANCHES = ("deployed/" + "prod",)
 # Words that change the repo, the registry or the cluster. The evidence step uses none of them.
 MUTATING = ("git push", "git tag", "git branch", "git merge", "gh release create", "gh release edit", "kubectl", "docker push")
 
@@ -60,15 +65,17 @@ FINAL_STEPS = [
     "Tag and push",
     "Wait for the release workflow",
     "Verify the published release",
-    "Advance the deployed branch",
+    "Record the release",
     EVIDENCE_STEP,
 ]
-TIMEOUTS = {"Gate chain": 1800, "Wait for the release workflow": 1800, "Verify the published release": 300, EVIDENCE_STEP: 120}
+TIMEOUTS = {"Final comes from the validated candidate": 120, "Record the release": 120, "Gate chain": 1800, "Wait for the release workflow": 1800, "Verify the published release": 300, EVIDENCE_STEP: 120}
 # The script each step must run, by step name.
 SCRIPTS = {
     "Gate chain": "scripts/release.sh",
     "Wait for the release workflow": "scripts/deploy/watch-release.sh",
     "Verify the published release": "scripts/deploy/verify-release.sh",
+    "Final comes from the validated candidate": "scripts/deploy/record-release.sh",
+    "Record the release": "scripts/deploy/record-release.sh",
     EVIDENCE_STEP: "scripts/deploy/release-evidence.sh",
 }
 
@@ -145,6 +152,43 @@ def check_step(where: str, step: object, errors: list[str]) -> None:
                     errors.append(f"{where}: the command names the shared record branch {branch} literally; use ${{{{ target.deployed_branch }}}}")
         if "git add -A" in run or "git add ." in run:
             errors.append(f"{where}: a blanket git add can sweep unreviewed work into a release; stage named files")
+
+
+def check_retired(errors: list[str]) -> None:
+    """No pipeline, script or test names a retired record branch, comments and prose included."""
+    roots = [PIPELINE_DIR, REPO_ROOT / "scripts"]
+    for root in roots:
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.resolve() == Path(__file__).resolve():
+                continue
+            try:
+                text = path.read_text()
+            except (UnicodeDecodeError, OSError):
+                continue
+            for branch in RETIRED_BRANCHES:
+                if branch in text:
+                    errors.append(f"{path.relative_to(REPO_ROOT)}: names the retired record branch {branch}; main is the prod record")
+
+
+def check_record_steps(label: str, steps: list, errors: list[str]) -> None:
+    """A final-capable pipeline checks and advances the record through record-release.sh, from the target."""
+    wanted = {
+        "Final comes from the validated candidate": "check",
+        "Record the release": "advance",
+    }
+    for step in steps:
+        if not isinstance(step, dict) or step.get("name") not in wanted:
+            continue
+        run = step.get("run", "")
+        verb = wanted[step["name"]]
+        want = f'record-release.sh {verb} "${{{{ version }}}}" "${{{{ target.env }}}}" "${{{{ target.branch }}}}" "${{{{ target.deployed_branch }}}}"'
+        if want not in run:
+            errors.append(f"{label}: step {step['name']!r} must run: scripts/deploy/{want}")
+    advance = next((s for s in steps if isinstance(s, dict) and s.get("name") == "Record the release"), None)
+    if advance is not None:
+        for fact in ("main_before", "main_after", "main_equals_final"):
+            if fact not in (advance.get("expect") or []):
+                errors.append(f"{label}: step 'Record the release' must expect the fact {fact!r}")
 
 
 def script_facts() -> set[str]:
@@ -238,6 +282,8 @@ def check_file(path: Path, facts: set[str]) -> list[str]:
     gate = next((s for s in steps if isinstance(s, dict) and s.get("name") == "Gate chain"), {})
     if "--check" not in gate.get("run", ""):
         errors.append(f"{label}: the Gate chain step must run scripts/release.sh in --check mode")
+    if path.name == "release.yml":
+        check_record_steps(label, steps, errors)
     check_evidence_step(label, steps, errors)
     return errors
 
@@ -257,6 +303,11 @@ def main() -> int:
                 print(f"FAIL {message}")
         else:
             print(f"ok   {path.name}")
+    retired: list[str] = []
+    check_retired(retired)
+    for message in retired:
+        failures += 1
+        print(f"FAIL {message}")
     missing = set(EXPECT) - {p.name for p in files}
     for name in sorted(missing):
         failures += 1

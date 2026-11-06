@@ -78,7 +78,15 @@ tooling cuts the same tags through the same script and shows the same run.
 A tag with a semver pre-release suffix (for example `v0.2.0-rc.1`) is published
 and pinnable by its exact version, and is flagged a GitHub pre-release, but
 never moves the `:latest` tag. A final release is cut from the exact commit that
-shipped as a release candidate. `deployed` records the last commit that shipped.
+shipped as a release candidate.
+
+Two branches record what shipped. `deployed` holds the last commit that was
+tagged, a candidate or a final. `main` is the prod record: a final
+fast-forwards it to the commit its tag names, a candidate never moves it, and
+the release is refused when `main` is not an ancestor of `dev`. Both move by
+fast-forward only; nothing is forced. `scripts/deploy/record-release.sh` holds
+the rule, and `scripts/deploy/record-release-test.sh` tests it against a local
+bare repository.
 
 Every released image carries a keyless Sigstore build-provenance attestation.
 Verify one with:

@@ -2,7 +2,7 @@
 # Evidence for a release run. Read-only and always exits 0: it prints data and no
 # verdict, so the agent that watches the run decides. It runs after a failure too.
 #
-# Prints: the tag and the commit it names, the workflow run with every job and
+# Prints: the tag and the commit it names, the record branches on origin, the workflow run with every job and
 # step conclusion, the failed log tail when a job failed, the GitHub release
 # page, the image digest and platforms, and the attestation summary.
 #
@@ -22,8 +22,8 @@ collect() (
   set +e
   echo "== tag"
   git rev-parse "$TAG^{commit}" 2>&1
-  echo "== record branch on origin"
-  git ls-remote origin refs/heads/deployed 2>&1
+  echo "== record branches on origin (deployed: last tagged; main: the prod record, moved by a final)"
+  git ls-remote origin refs/heads/deployed refs/heads/main 2>&1
   run_id="$(fm_release_run_id "$TAG")"
   echo "== workflow run ($RELEASE_WORKFLOW)"
   if [ -n "$run_id" ]; then

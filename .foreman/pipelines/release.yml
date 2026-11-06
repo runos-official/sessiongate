@@ -4,11 +4,18 @@
 # This repo is PUBLIC and its image is built by GitHub Actions (release.yml), not
 # here, so the public sees the same process that foreman shows. Foreman runs the
 # repo's own gate script in check mode, tags and pushes, WATCHES the workflow the
-# tag started, verifies what it published, and records the release on the
-# `deployed` branch.
+# tag started, verifies what it published, and records the release.
+#
+# The record. `deployed` holds the last commit that was tagged, a candidate or a
+# final. A candidate moves `deployed` and nothing else. A FINAL moves `deployed`
+# and also fast-forwards `main`, the prod record, to the commit the final's tag
+# names. The dev target carries `deployed_branch: deployed`. The prod target
+# carries `deployed_branch: main`. scripts/deploy/record-release.sh holds both
+# rules, refuses a record that does not fit the env, and refuses anything but a
+# fast-forward. It never forces and it deletes no branch.
 #
 # A FINAL is never cut from fresh code. It is cut from the exact commit that
-# shipped as a release candidate and is recorded as shipped (step one). The final
+# shipped as a release candidate and is recorded as shipped (step two). The final
 # image is a new build of that same commit; it moves the :latest tag, a candidate
 # does not.
 #
@@ -27,7 +34,7 @@ kind: github_release
 
 steps:
   - name: Version and target agree
-    description: "A dev target takes a release candidate (vX.Y.Z-rc.N), a prod target takes a final (vX.Y.Z). The target integrates on dev and records on deployed, which is all scripts/release.sh uses."
+    description: "A dev target takes a release candidate (vX.Y.Z-rc.N), a prod target takes a final (vX.Y.Z). The target integrates on dev, which is all scripts/release.sh uses. The next step checks that the target's record fits its env."
     run: |
       version="${{ version }}"
       printf '%s' "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' || { echo "version $version must look like v1.2.3 or v1.2.3-rc.1"; exit 1; }
@@ -37,39 +44,12 @@ steps:
         *) echo "unknown target env: ${{ target.env }}"; exit 1 ;;
       esac
       test "${{ target.branch }}" = "dev" || { echo "this target integrates on ${{ target.branch }}, but scripts/release.sh releases only from dev"; exit 1; }
-      test "${{ target.deployed_branch }}" = "deployed" || { echo "this target records on ${{ target.deployed_branch }}, but only the branch deployed is advanced"; exit 1; }
       echo "$version on a ${{ target.env }} target"
     timeout: 60
 
   - name: Final comes from the validated candidate
-    description: A final version (no -rc) must be cut from the exact commit that shipped as a release candidate and is recorded as shipped. If the integration branch has moved on since, the final would carry code no candidate ever validated, and the record would claim it. A candidate passes straight through.
-    run: |
-      version="${{ version }}"
-      case "$version" in
-        *-*) echo "$version is a release candidate: nothing to check"; exit 0 ;;
-      esac
-      branch="${{ target.branch }}"
-      record="${{ target.deployed_branch }}"
-      git fetch --quiet --tags origin
-      tip="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
-      recorded="$(git ls-remote origin "refs/heads/$record" | cut -f1)"
-      test -n "$tip" || { echo "cannot read $branch on origin"; exit 1; }
-      test -n "$recorded" || { echo "$record does not exist on origin: no release candidate has shipped yet. Cut a candidate from $branch and validate it first."; exit 1; }
-      test "$recorded" = "$tip" || {
-        echo "$record on origin is at $recorded, but $branch is at $tip."
-        echo "$version must be cut from the commit a release candidate shipped. Cut a new candidate from $branch, validate it, then promote that."
-        exit 1
-      }
-      found=""
-      for tag in $(git tag --list "${version}-rc.*"); do
-        if [ "$(git rev-parse "$tag^{commit}")" = "$tip" ]; then found="$tag"; fi
-      done
-      test -n "$found" || {
-        echo "no release candidate tag ${version}-rc.N points at $tip, the tip of $branch."
-        echo "Cut a new candidate from $branch, validate it, then promote that."
-        exit 1
-      }
-      echo "$version will be cut from $tip, the commit $found shipped and $record records"
+    description: A final version (no -rc) must be cut from the exact commit that shipped as a release candidate and that `deployed` records. If dev has moved on since, the final would carry code no candidate validated. A final on a prod target must also be able to fast-forward main, so main must be an ancestor of dev. The target's record must fit its env. A candidate passes straight through.
+    run: scripts/deploy/record-release.sh check "${{ version }}" "${{ target.env }}" "${{ target.branch }}" "${{ target.deployed_branch }}"
     timeout: 120
 
   - name: Gate chain
@@ -78,7 +58,7 @@ steps:
     timeout: 1800
 
   - name: Tag and push
-    description: Tags the integration branch and pushes both. main is never touched here; the human merges it after their own verification.
+    description: Tags the integration branch and pushes both. The record is not touched here; the last step moves it once the release is verified.
     run: |
       git checkout --quiet ${{ target.branch }}
       sha="$(git rev-parse --short HEAD)"
@@ -101,15 +81,12 @@ steps:
     expect: [image, digest, platforms, attestation, attested_commit]
     observe: digest is the image to pin. platforms must list linux/amd64 and linux/arm64. attested_commit must be the tagged commit.
 
-  - name: Advance the deployed branch
-    description: The record of what has actually shipped. Fast-forwarded only now, on success. main stays clean for the human.
-    run: |
-      # The record ref comes from the target: an objective-scoped deploy records
-      # on its own rc ref, never on the shared one, so the literal name is refused.
-      record="${{ target.deployed_branch }}"
-      git branch -f "$record" ${{ target.branch }}
-      git push --quiet origin "$record"
-      echo "$record now at $(git rev-parse --short "$record")"
+  - name: Record the release
+    description: "Only now, on success. A candidate fast-forwards deployed. A final fast-forwards deployed and main to the commit the final's tag names, and refuses anything that is not a fast-forward. Nothing is forced."
+    run: scripts/deploy/record-release.sh advance "${{ version }}" "${{ target.env }}" "${{ target.branch }}" "${{ target.deployed_branch }}"
+    timeout: 120
+    expect: [main_before, main_after, main_equals_final]
+    observe: Printed for a final on a prod target only. main_after must equal the final's tagged commit and main_equals_final must be true. main_before is what main held before.
 
   # Read-only, runs even after a failure or a cancel, prints data and no verdict. The agent decides.
   - name: Collect evidence
