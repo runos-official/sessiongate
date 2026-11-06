@@ -1,0 +1,25 @@
+# leakcheck baseline (leakcheck v1.2.1)
+#
+# WHAT THIS FILE IS
+# Every line below is an internal identifier that is ALREADY PUBLISHED in this
+# public repo. The gate ignores these lines so that existing work is not
+# blocked, and fails on anything new.
+#
+# A LINE HERE IS A RECORD OF A LEAK THAT ALREADY HAPPENED. IT IS NOT A LICENCE
+# TO ADD MORE. Never hand-add a line to get a commit through. The honest way to
+# clear a finding is to delete the identifier from the source and run
+# `make leakcheck-update`, which is the only direction this file should move.
+#
+# Columns are tab separated: <path> <kind> <token>
+# Regenerate with: make leakcheck-update
+internal/gate/live_test.go	id	rjwrn
+internal/gate/verify_test.go	id	rjwrn
+internal/kubevirt/target_test.go	id	rjwrn
+internal/kubevirt/target_test.go	ipv4	10.96.0.1
+internal/pass/casefold_test.go	id	rjwrn
+internal/pass/vectors_test.go	id	rjwrn
+internal/pass/verify_test.go	id	rjwrn
+internal/replay/claim.go	ipv4	10.96.0.1
+internal/replay/claim_test.go	ipv4	10.96.0.1
+internal/workspace/target_test.go	id	rjwrn
+main_test.go	id	rjwrn

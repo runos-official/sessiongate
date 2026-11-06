@@ -61,15 +61,24 @@ go test -race ./...
 
 ## Releases
 
-A release is cut by pushing a tag:
+Work lands on `dev`. A release is cut from `dev` by `scripts/release.sh`, which
+runs every gate (the leak gate of a public repo, gofmt, build, vet and the race
+tests, and a green CI run on the exact commit), tags the commit, and waits for
+the release workflow that the tag starts:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+make release RELEASE_VERSION=v0.2.0-rc.1 CHECK=1   # every gate, no tag, no push
+make release RELEASE_VERSION=v0.2.0-rc.1           # gates, tag, push, watch, verify
 ```
 
-A tag with a semver pre-release suffix (for example `v0.1.0-rc.1`) is published
+The release workflow (`.github/workflows/release.yml`) builds the image and
+publishes it. Anyone can read its run in GitHub Actions. The maintainers' release
+tooling cuts the same tags through the same script and shows the same run.
+
+A tag with a semver pre-release suffix (for example `v0.2.0-rc.1`) is published
 and pinnable by its exact version, and is flagged a GitHub pre-release, but
-never moves the `:latest` tag.
+never moves the `:latest` tag. A final release is cut from the exact commit that
+shipped as a release candidate. `deployed` records the last commit that shipped.
 
 Every released image carries a keyless Sigstore build-provenance attestation.
 Verify one with:

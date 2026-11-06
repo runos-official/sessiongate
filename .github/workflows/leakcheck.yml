@@ -1,0 +1,55 @@
+name: Leak gate
+
+# This is the gate that stands between a commit and GitHub. It runs on EVERY
+# push and EVERY pull request, on every branch, and nobody can skip it.
+#
+# WHY IT IS ITS OWN FILE AND NOT A JOB IN ci.yml
+# ci.yml is scoped to `branches: [main]`, so a push to dev never triggers it.
+# Day-to-day work lands on dev, which is exactly where an internal identifier
+# would arrive, so a main-only trigger would gate nothing that matters. This
+# workflow therefore takes no branch filter at all.
+#
+# WHY THE OTHER TWO RUN POINTS ARE NOT ENOUGH
+# .githooks/pre-commit is opt-in per clone (`make hooks`) and skippable with
+# --no-verify, and a fresh clone has core.hooksPath unset, so it has no hook at
+# all. scripts/release.sh requires dev to already match origin/dev BEFORE it
+# runs, so its whole-tree scan happens after the content is already public.
+# This workflow is the only run point that sees the content before a human does.
+#
+# MODE: the whole-tree scan, the authoritative one. It reads the checked-out
+# working tree plus `git ls-files`, so the default fetch-depth of 1 is enough
+# and no extra history is needed.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  leakcheck:
+    name: Leak gate (public repo, whole tree)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Report the checker version
+        run: python3 scripts/leakcheck.py --version
+
+      # Fails on any credential shape, and on any internal identifier that is
+      # not already recorded in scripts/leakcheck.baseline.
+      - name: Scan every tracked file
+        run: python3 scripts/leakcheck.py
+
+      # leakcheck only fully reads UTF-8 text. A NUL-bearing or non-UTF-8 file
+      # is read best effort at most, and some encodings escape it entirely:
+      # measured on checker 1.2.0, a token in a UTF-32 file and a token broken
+      # up by NUL bytes both passed the step above with exit 0. This makes an
+      # unreadable tracked file a hard failure instead.
+      - name: Every tracked file must be one leakcheck can read
+        run: python3 scripts/unscannable_check.py
+
+      # The checker's own tests: what it must catch and what it must not.
+      - name: Test the checker itself
+        run: python3 scripts/leakcheck_test.py
