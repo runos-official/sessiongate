@@ -7,6 +7,20 @@ uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The release pipeline extracts the section matching the pushed tag (`## vX.Y.Z`)
 as the GitHub release notes, so every released version needs a section here.
 
+## v0.1.1
+
+No change to the gate's behaviour. This release carries the release tooling into the published history, so the prod record (main) matches dev. The same commit shipped as the hidden release candidate v0.1.1-rc.1.
+
+### Changed
+- Releases run through Foreman pipelines: a hidden candidate on dev, then a final cut from the same commit, which fast-forwards main, the prod record.
+- The release script has a check mode that runs every gate with no side effects, including the leak gate of a public repo, which reads the whole tree.
+- A pre-push hook stops a push that adds an internal identifier or a credential.
+- CI runs on dev, and the changelog check matches whole version headings.
+
+## v0.1.1-rc.1
+
+This hidden release candidate carries release tooling only: Foreman release pipelines, the leak gate, a release script with a check mode and a pre-push hook. The gate's behaviour does not change.
+
 ## v0.1.0
 
 First stable release. It finalizes the v0.1.0 line (rc.1 through rc.3) and carries no code change
