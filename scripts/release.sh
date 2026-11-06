@@ -130,7 +130,13 @@ fi
 # else that needs judgment (org and customer names, context-dependent leaks) is
 # the skill's reasoning audit, NOT this gate.
 step "Sensitivity scan (public repo, ${PAYLOAD_BASE}..${INTEGRATION_BRANCH})"
-ADDED_LINES="$(git diff "$PAYLOAD_BASE..$INTEGRATION_BRANCH" -- . | grep '^+' | grep -v '^+++' || true)"
+# The files that scripts/leakcheck.config excludes (signed test vectors, which
+# are credential-shaped on purpose) are left out here too, as they are there.
+EXCLUDES=()
+while IFS= read -r excluded; do
+  [[ -n "$excluded" ]] && EXCLUDES+=(":(exclude)$excluded")
+done < <(git show "$INTEGRATION_BRANCH:scripts/leakcheck.config" | sed -n 's/^exclude:[[:space:]]*//p')
+ADDED_LINES="$(git diff "$PAYLOAD_BASE..$INTEGRATION_BRANCH" -- . ${EXCLUDES[@]+"${EXCLUDES[@]}"} | grep '^+' | grep -v '^+++' || true)"
 # The quoted-assignment branch below matches `key: "value"`. A value that is a
 # bare SCREAMING_SNAKE identifier (an env var NAME) or a run of lowercase words
 # joined by hyphens (a test placeholder) cannot be a credential, so it is
