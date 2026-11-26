@@ -4,7 +4,7 @@ Thanks for contributing to the RunOS session gate.
 
 ## Prerequisites
 
-- **Go 1.25+** (see `go.mod`). The gate is CGO-free; `make build` sets
+- **Go 1.26.10+** (see the `toolchain` line in `go.mod`). The gate is CGO-free; `make build` sets
   `CGO_ENABLED=0` for you.
 - **Docker Buildx** if you build the container image locally.
 
