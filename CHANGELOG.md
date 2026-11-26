@@ -13,6 +13,10 @@ as the GitHub release notes, so every released version needs a section here.
 
 - The gate builds with Go 1.26.11 instead of Go 1.25.5 (FCR 1654). The v0.1.0 image carried a binary built with go1.25.5, a line without security fixes. go.mod gains a toolchain line and the build image moves to golang:1.26.11-alpine3.23, pinned by digest. The 1.26 line carries the standard-library fixes that 1.25.5 lacks, including the HTTP/2 SETTINGS denial of service (CVE-2026-78669). The build uses 1.26.11 and not 1.26.10 because 1.26.11 also fixes GO-2026-6859, a race in net/http that can crash an HTTP/1 server. govulncheck: 26 standard-library findings with Go 1.25.5, one with Go 1.26.10, none with Go 1.26.11.
 
+## v0.1.2-rc.2
+
+This hidden release candidate carries the Go 1.26.11 build only. Go 1.26.11 fixes GO-2026-6859 in net/http. The gate's behaviour does not change.
+
 ## v0.1.2-rc.1
 
 This hidden release candidate carries the Go 1.26.10 build only (FCR 1654). The gate's behaviour does not change.
